@@ -503,6 +503,151 @@
     .t-info .tdot { background: #a5b4fc; }
     .t-warn .tdot { background: #fcd34d; }
 
+    /* ══ Quick View Modal ════════════════════════════════════ */
+    .qv-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,15,40,.52); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 800; opacity: 0; pointer-events: none;
+      transition: opacity .22s;
+    }
+    .qv-overlay.open { opacity: 1; pointer-events: all; }
+
+    .qv-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 440px; max-width: 95vw;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      transform: scale(.93) translateY(16px);
+      transition: transform .25s cubic-bezier(.34,1.28,.64,1);
+      position: relative;
+    }
+    .qv-overlay.open .qv-panel { transform: scale(1) translateY(0); }
+
+    /* Image hero */
+    .qv-hero {
+      width: 100%; height: 210px;
+      background: var(--surface3);
+      border-radius: var(--radius) var(--radius) 0 0;
+      overflow: hidden; position: relative; flex-shrink: 0;
+    }
+    .qv-hero img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .qv-hero .qv-ph {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5.5rem; opacity: .18;
+    }
+    .qv-hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 55%, rgba(0,0,0,.18) 100%);
+      pointer-events: none;
+    }
+
+    /* Close button (top-right of hero) */
+    .qv-close {
+      position: absolute; top: 12px; right: 12px; z-index: 3;
+      width: 34px; height: 34px;
+      background: rgba(255,255,255,.93); backdrop-filter: blur(4px);
+      border: 1px solid var(--border); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; font-weight: 700; color: var(--text2);
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,.14);
+      transition: all .15s;
+    }
+    .qv-close:hover { background: var(--red-light); border-color: var(--red); color: var(--red); transform: scale(1.08); }
+
+    /* Body */
+    .qv-body { padding: 20px 22px 24px; }
+
+    .qv-name {
+      font-size: 1.22rem; font-weight: 900;
+      color: var(--text); line-height: 1.25; margin-bottom: 4px;
+    }
+    .qv-meta {
+      font-size: .71rem; color: var(--muted2); margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .qv-meta span { display: flex; align-items: center; gap: 4px; }
+
+    /* SKU strip */
+    .qv-sku-strip {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    .qv-sku-lbl {
+      font-size: .63rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted); flex-shrink: 0;
+    }
+    .qv-sku-val {
+      font-family: 'Courier New', monospace; font-size: .9rem;
+      font-weight: 700; color: var(--accent); letter-spacing: .4px;
+    }
+
+    /* Info cards grid */
+    .qv-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 11px; margin-bottom: 14px;
+    }
+    .qv-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 13px 15px;
+    }
+    .qv-card-lbl {
+      font-size: .63rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;
+    }
+    .qv-card-val {
+      font-size: 1.18rem; font-weight: 900; color: var(--text); line-height: 1;
+    }
+    .qv-card.c-price .qv-card-val { color: var(--green); }
+    .qv-card.c-qty   .qv-card-val.is-low { color: var(--red); }
+
+    /* Stock value highlight strip */
+    .qv-value-strip {
+      background: linear-gradient(135deg, var(--accent-light), #f0fdf4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 15px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .qv-value-strip .qv-card-lbl { margin-bottom: 0; }
+    .qv-value-strip .qvv { font-size: .95rem; font-weight: 800; color: var(--accent2); }
+
+    /* Status row */
+    .qv-status-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 0 0;
+    }
+    .qv-status-lbl { font-size: .72rem; font-weight: 600; color: var(--muted); }
+
+    /* Divider + hint */
+    .qv-hint {
+      text-align: center; font-size: .68rem; color: var(--muted2);
+      margin-top: 18px; padding-top: 14px;
+      border-top: 1px dashed var(--border);
+    }
+    .qv-hint kbd {
+      display: inline-block;
+      background: var(--surface3); border: 1px solid var(--border2);
+      border-radius: 4px; padding: 1px 7px;
+      font-family: inherit; font-size: .67rem; color: var(--text2);
+    }
+
+    /* Clickable table rows */
+    tbody tr.clickable { cursor: pointer; }
+    tbody tr.clickable:hover { background: #eef1ff !important; }
+    tbody tr.clickable.row-low:hover { background: #ffe0e0 !important; }
+
     /* ══ Scrollbar ═══════════════════════════════════════════ */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -701,6 +846,62 @@
 
   </div><!-- /layout -->
 </div><!-- /wrap -->
+
+<!-- ══ Quick View Modal ══════════════════════════════════════ -->
+<div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
+  <div class="qv-panel" id="qvPanel">
+
+    <!-- Close button sits on top of the hero image -->
+    <button class="qv-close" onclick="closeQV()" title="Close (Esc)">✕</button>
+
+    <!-- Hero image -->
+    <div class="qv-hero" id="qvHero">
+      <img id="qvImg" alt="" style="display:none" />
+      <div class="qv-ph" id="qvPh">📦</div>
+    </div>
+
+    <!-- Detail body -->
+    <div class="qv-body">
+      <div class="qv-name" id="qvName">—</div>
+      <div class="qv-meta">
+        <span>🗓 <span id="qvAdded">—</span></span>
+      </div>
+
+      <!-- SKU -->
+      <div class="qv-sku-strip">
+        <span class="qv-sku-lbl">SKU / Barcode</span>
+        <span class="qv-sku-val" id="qvSku">—</span>
+      </div>
+
+      <!-- Price + Qty cards -->
+      <div class="qv-grid">
+        <div class="qv-card c-price">
+          <div class="qv-card-lbl">Unit Price</div>
+          <div class="qv-card-val" id="qvPrice">—</div>
+        </div>
+        <div class="qv-card c-qty">
+          <div class="qv-card-lbl">Stock Quantity</div>
+          <div class="qv-card-val" id="qvQtyVal">—</div>
+        </div>
+      </div>
+
+      <!-- Total stock value -->
+      <div class="qv-value-strip">
+        <span class="qv-card-lbl">💰 Total Stock Value</span>
+        <span class="qvv" id="qvTotalVal">—</span>
+      </div>
+
+      <!-- Status -->
+      <div class="qv-status-row">
+        <span class="qv-status-lbl">Stock Status</span>
+        <span id="qvStatus">—</span>
+      </div>
+
+      <!-- Hint -->
+      <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close &nbsp;·&nbsp; view only</div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ Delete Confirm Modal ══════════════════════════════════ -->
 <div class="overlay" id="delModal">
@@ -1042,6 +1243,72 @@ function closeDelModal() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   QUICK VIEW
+═══════════════════════════════════════════════════════════ */
+function openQV(id) {
+  const item = inventory.find(i => i.id === id);
+  if (!item) return;
+
+  /* ── image ── */
+  const img = document.getElementById('qvImg');
+  const ph  = document.getElementById('qvPh');
+
+  if (item.img?.type === 'drive') {
+    img.src      = driveThumb(item.img.value, 800);
+    img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
+    img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
+    img.style.display = 'none'; ph.style.display = '';
+  } else if (item.img?.type === 'local') {
+    img.src      = pathToURL(item.img.value);
+    img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
+    img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
+    img.style.display = 'none'; ph.style.display = '';
+  } else {
+    img.style.display = 'none';
+    ph.style.display  = '';
+  }
+
+  /* ── text fields ── */
+  const low = item.qty < 5;
+
+  document.getElementById('qvName').textContent     = item.name;
+  document.getElementById('qvAdded').textContent    = item.added;
+  document.getElementById('qvSku').textContent      = item.sku;
+  document.getElementById('qvPrice').textContent    = '₹' + fmt(item.price);
+  document.getElementById('qvTotalVal').textContent = '₹' + fmt(item.price * item.qty);
+
+  const qtyEl = document.getElementById('qvQtyVal');
+  qtyEl.textContent = item.qty;
+  qtyEl.className   = 'qv-card-val' + (low ? ' is-low' : '');
+
+  document.getElementById('qvStatus').innerHTML = item.qty === 0
+    ? `<span class="badge b-out">🚫 Out of Stock</span>`
+    : low
+      ? `<span class="badge b-low">⚠️ Low Stock</span>`
+      : `<span class="badge b-ok">✔ In Stock</span>`;
+
+  /* ── open ── */
+  document.getElementById('qvOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeQV() {
+  document.getElementById('qvOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleQvBg(e) {
+  if (e.target === document.getElementById('qvOverlay')) closeQV();
+}
+
+/* Escape closes whichever modal is open */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('qvOverlay').classList.contains('open'))  closeQV();
+  if (document.getElementById('delModal').classList.contains('open'))   closeDelModal();
+});
+
+/* ═══════════════════════════════════════════════════════════
    RENDER TABLE
 ═══════════════════════════════════════════════════════════ */
 function render() {
@@ -1092,7 +1359,7 @@ function render() {
         : `<span class="badge b-ok">✔ In Stock</span>`;
 
     return `
-      <tr class="${low ? 'row-low' : ''}" data-id="${item.id}">
+      <tr class="clickable ${low ? 'row-low' : ''}" data-id="${item.id}" onclick="openQV(${item.id})" title="Click to quick-view">
         <td>${thumb}</td>
         <td>
           <div class="prod-name">${esc(item.name)}</div>
@@ -1100,7 +1367,7 @@ function render() {
         </td>
         <td><span class="sku-badge">${esc(item.sku)}</span></td>
         <td class="price-val">₹${fmt(item.price)}</td>
-        <td>
+        <td onclick="event.stopPropagation()">
           <div class="qty-ctrl">
             <button class="qty-btn minus" onclick="adjQty(${item.id},-1)"
                     ${item.qty === 0 ? 'disabled' : ''} title="Decrease">−</button>
@@ -1109,7 +1376,9 @@ function render() {
           </div>
         </td>
         <td>${badge}</td>
-        <td><button class="btn-del" onclick="reqDel(${item.id})">🗑 Delete</button></td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn-del" onclick="reqDel(${item.id})">🗑 Delete</button>
+        </td>
       </tr>`;
   }).join('');
 }
