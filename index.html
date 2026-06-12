@@ -779,7 +779,7 @@
 
           <!-- Preview strip (shared) -->
           <div class="preview-strip" id="previewStrip">
-            <img id="previewImg" alt="preview" />
+            <img id="previewImg" alt="preview" crossorigin="anonymous" />
             <div class="preview-info">
               <strong id="previewLabel">Image ready</strong>
               <span id="previewSub"></span>
@@ -871,7 +871,7 @@
 
     <!-- Hero image -->
     <div class="qv-hero" id="qvHero">
-      <img id="qvImg" alt="" style="display:none" />
+      <img id="qvImg" alt="" style="display:none" crossorigin="anonymous" />
       <div class="qv-ph" id="qvPh">📦</div>
     </div>
 
@@ -968,8 +968,10 @@ let pendingAuthCbs = [];
 let imsFolderId = null;
 let inventoryFileId = null;
 let syncTimer = null;
+let allowInteractiveAuthFallback = false;
 const IMS_FOLDER_NAME = 'IMS';
 const IMS_INVENTORY_FILE = 'inventory.json';
+const DRIVE_AUTH_CACHE_KEY = 'ims_drive_auth_connected';
 
 /* ─── Load persisted data ────────────────────────────────── */
 try { inventory = JSON.parse(localStorage.getItem('ims_v3') || '[]'); } catch(e) { inventory = []; }
@@ -990,9 +992,9 @@ window.addEventListener('load', async () => {
   render();
   updateStats();
 
-  if (hasCid && navigator.onLine) {
+  if (hasCid && navigator.onLine && localStorage.getItem(DRIVE_AUTH_CACHE_KEY) === '1') {
     queueAfterAuth(() => syncFromDriveOnStartup());
-    if (ensureTokenClient()) tokenClient.requestAccessToken({ prompt: '' });
+    requestAccessToken({ silent: true });
   }
 });
 
@@ -1016,16 +1018,34 @@ function ensureTokenClient() {
 
 function onToken(resp) {
   if (resp.error) {
+    if (
+      allowInteractiveAuthFallback &&
+      ['consent_required', 'interaction_required'].includes(resp.error)
+    ) {
+      allowInteractiveAuthFallback = false;
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+      return;
+    }
+    allowInteractiveAuthFallback = false;
     if (!['access_denied', 'consent_required', 'interaction_required', 'popup_closed_by_user'].includes(resp.error)) {
       toast('Google auth error: ' + resp.error, 'err');
     }
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     return;
   }
+  allowInteractiveAuthFallback = false;
   gToken = resp.access_token;
+  localStorage.setItem(DRIVE_AUTH_CACHE_KEY, '1');
   updateDriveBtn();
   const cbs = pendingAuthCbs.splice(0);
   cbs.forEach(cb => Promise.resolve(cb()).catch(() => {}));
+}
+
+function requestAccessToken({ silent = false, allowInteractiveFallback = false } = {}) {
+  if (!ensureTokenClient()) return false;
+  allowInteractiveAuthFallback = Boolean(silent && allowInteractiveFallback);
+  tokenClient.requestAccessToken({ prompt: silent ? 'none' : 'consent' });
+  return true;
 }
 
 function updateDriveBtn() {
@@ -1045,13 +1065,13 @@ function handleDriveClick() {
   if (gToken) {
     try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
     gToken = null;
+    localStorage.removeItem(DRIVE_AUTH_CACHE_KEY);
     updateDriveBtn();
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     toast('Disconnected from Google Drive.', 'info');
   } else {
-    if (!ensureTokenClient()) return;
     queueAfterAuth(() => syncFromDriveOnStartup(true));
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    requestAccessToken({ silent: false });
   }
 }
 
@@ -1066,8 +1086,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
 
   if (!gToken) {
     queueAfterAuth(() => doUpload(file));
-    if (!ensureTokenClient()) return;
-    tokenClient.requestAccessToken({ prompt: '' });
+    if (!requestAccessToken({ silent: true, allowInteractiveFallback: true })) return;
   } else {
     await doUpload(file);
   }
@@ -1087,7 +1106,11 @@ async function doUpload(file) {
   } catch(err) {
     resetDZ();
     toast('Upload failed: ' + err.message, 'err');
-    if (/401|unauthorized/i.test(err.message)) { gToken = null; updateDriveBtn(); }
+    if (/401|unauthorized/i.test(err.message)) {
+      gToken = null;
+      localStorage.removeItem(DRIVE_AUTH_CACHE_KEY);
+      updateDriveBtn();
+    }
   }
 }
 
@@ -1253,7 +1276,7 @@ async function syncFromDriveOnStartup(showToast = false) {
 
 /* Thumbnail URL for publicly-shared Drive file */
 function driveThumb(fileId, sz = 400) {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${sz}-h${sz}`;
+  return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(fileId)}&sz=w${sz}-h${sz}&authuser=0`;
 }
 
 /* Fallback view URL */
@@ -1418,11 +1441,13 @@ function openQV(id) {
   const ph  = document.getElementById('qvPh');
 
   if (item.img?.type === 'drive') {
+    img.crossOrigin = 'anonymous';
     img.src      = driveThumb(item.img.value, 800);
     img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
     img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
     img.style.display = 'none'; ph.style.display = '';
   } else if (item.img?.type === 'local') {
+    img.removeAttribute('crossorigin');
     img.src      = pathToURL(item.img.value);
     img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
     img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
@@ -1505,7 +1530,7 @@ function render() {
     let thumb;
     if (item.img?.type === 'drive') {
       const url = driveThumb(item.img.value);
-      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}"
+      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}" crossorigin="anonymous"
                  onerror="this.src='${esc(driveView(item.img.value))}';this.onerror=()=>{this.parentElement.innerHTML='📦';}" /></div>`;
     } else if (item.img?.type === 'local') {
       const url = pathToURL(item.img.value);
