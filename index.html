@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StockPulse — Inventory Management</title>
+
+  <!-- Google Identity Services (for Drive OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
+
+  <style>
+    /* ══ Reset ══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ══ Design Tokens — Light Theme ═══════════════════════ */
+    :root {
+      --bg:           #eef1f8;
+      --surface:      #ffffff;
+      --surface2:     #f5f7fc;
+      --surface3:     #eaecf5;
+      --border:       #dce1ef;
+      --border2:      #c8cfdf;
+
+      --accent:       #6c63ff;
+      --accent2:      #8b5cf6;
+      --accent-light: #ede9fe;
+      --accent-glow:  rgba(108,99,255,.18);
+
+      --green:        #16a34a;
+      --green-light:  #dcfce7;
+      --green-border: #86efac;
+      --red:          #dc2626;
+      --red-light:    #fee2e2;
+      --red-border:   #fca5a5;
+      --yellow:       #d97706;
+      --yellow-light: #fef9c3;
+
+      --text:         #1a1d2e;
+      --text2:        #374151;
+      --muted:        #6b7280;
+      --muted2:       #9ca3af;
+
+      --radius:       14px;
+      --radius-sm:    9px;
+      --radius-xs:    6px;
+      --shadow:       0 4px 20px rgba(100,116,139,.13);
+      --shadow-sm:    0 2px 8px  rgba(100,116,139,.08);
+      --shadow-lg:    0 10px 44px rgba(100,116,139,.2);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+    }
+
+    /* ══ Header ═══════════════════════════════════════════════ */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 66px;
+      padding: 0 36px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      box-shadow: var(--shadow-sm);
+    }
+    .logo-box {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 14px var(--accent-glow);
+      flex-shrink: 0;
+    }
+    .hdr-title h1 {
+      font-size: 1.22rem; font-weight: 800;
+      letter-spacing: -.2px; color: var(--text);
+    }
+    .hdr-title h1 span { color: var(--accent); }
+    .hdr-title p {
+      font-size: .67rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1.1px; margin-top: 2px;
+    }
+    .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    /* Drive connect button */
+    #driveBtn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .74rem; font-weight: 600; font-family: inherit;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    #driveBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    #driveBtn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); flex-shrink: 0; }
+    #driveBtn.connected { border-color: var(--green); color: var(--green); background: var(--green-light); }
+    #driveBtn.connected .dot { background: var(--green); }
+
+    /* ══ Container ═══════════════════════════════════════════ */
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 28px 22px 0; }
+
+    /* ══ Setup Banner ════════════════════════════════════════ */
+    .setup-banner {
+      background: var(--accent-light);
+      border: 1.5px solid rgba(108,99,255,.28);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin-bottom: 22px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .sb-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+    .setup-banner h4 { font-size: .86rem; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+    .setup-banner p  { font-size: .77rem; color: var(--text2); line-height: 1.65; }
+    .setup-banner a  { color: var(--accent); }
+    .setup-banner code {
+      background: rgba(108,99,255,.12); padding: 1px 6px;
+      border-radius: 4px; font-family: 'Courier New', monospace;
+      font-size: .73rem; color: var(--accent2);
+    }
+    .sb-close {
+      margin-left: auto; flex-shrink: 0;
+      background: transparent; border: none;
+      color: var(--muted); cursor: pointer;
+      font-size: 1rem; padding: 3px 7px;
+      border-radius: 5px; line-height: 1;
+    }
+    .sb-close:hover { background: rgba(108,99,255,.12); }
+
+    /* ══ Stats Bar ═══════════════════════════════════════════ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 16px; margin-bottom: 22px;
+    }
+    @media(max-width:900px){ .stats{ grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:480px){ .stats{ grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      position: relative; overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .sc-a::before { background: linear-gradient(90deg,#6c63ff,#8b5cf6); }
+    .sc-b::before { background: linear-gradient(90deg,#16a34a,#22c55e); }
+    .sc-c::before { background: linear-gradient(90deg,#dc2626,#ef4444); }
+    .sc-d::before { background: linear-gradient(90deg,#d97706,#f59e0b); }
+
+    .sc-icon { font-size: 1.5rem; display: block; margin-bottom: 8px; opacity: .85; }
+    .sc-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .sc-num   { font-size: 1.9rem; font-weight: 900; margin-top: 5px; line-height: 1; }
+    .sc-a .sc-num { color: var(--accent); }
+    .sc-b .sc-num { color: var(--green); }
+    .sc-c .sc-num { color: var(--red); }
+    .sc-d .sc-num { color: var(--yellow); }
+
+    /* ══ Layout ══════════════════════════════════════════════ */
+    .layout {
+      display: grid;
+      grid-template-columns: 368px 1fr;
+      gap: 22px; align-items: start;
+    }
+    @media(max-width:940px){ .layout{ grid-template-columns: 1fr; } }
+
+    /* ══ Panel ═══════════════════════════════════════════════ */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .panel-head {
+      padding: 14px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: .88rem;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text);
+    }
+
+    /* ══ Add-Product Form ════════════════════════════════════ */
+    .add-form { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label {
+      font-size: .71rem; font-weight: 700;
+      color: var(--text2); text-transform: uppercase; letter-spacing: .75px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 9px 13px;
+      font-size: .875rem; font-family: inherit;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    input::placeholder { color: var(--muted2); }
+
+    /* Mode toggle: Drive / Local */
+    .mode-toggle {
+      display: flex; gap: 0;
+      background: var(--surface3);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px; overflow: hidden;
+    }
+    .mode-btn {
+      flex: 1; padding: 6px 4px;
+      background: transparent; border: none;
+      border-radius: 6px;
+      font-size: .73rem; font-weight: 600; font-family: inherit;
+      color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all .15s; white-space: nowrap;
+    }
+    .mode-btn.active {
+      background: var(--surface); color: var(--accent);
+      box-shadow: 0 1px 5px rgba(0,0,0,.09);
+    }
+
+    /* Google Drive upload drop zone */
+    .dz {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 14px;
+      text-align: center;
+      background: var(--surface2);
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .dz:hover        { border-color: var(--accent); background: var(--accent-light); }
+    .dz.uploading    { border-color: var(--accent); background: var(--accent-light); pointer-events: none; }
+    .dz.done         { border-color: var(--green);  border-style: solid; background: var(--green-light); }
+    .dz input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .dz-icon  { font-size: 1.8rem; display: block; margin-bottom: 5px; line-height: 1; }
+    .dz-text  { font-size: .8rem; font-weight: 600; color: var(--text2); }
+    .dz-sub   { font-size: .68rem; color: var(--muted); margin-top: 3px; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2.5px solid var(--accent-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      vertical-align: middle; margin-right: 5px;
+    }
+
+    /* Local path */
+    .local-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .mono-input { font-family: 'Courier New', monospace !important; font-size: .78rem !important; }
+    .path-hint  { font-size: .67rem; color: var(--muted); line-height: 1.55; }
+    .path-hint code {
+      background: var(--surface3); padding: 1px 5px;
+      border-radius: 4px; font-family: 'Courier New', monospace;
+      font-size: .67rem; color: var(--accent2);
+    }
+
+    /* Image preview strip */
+    .preview-strip {
+      display: none;
+      align-items: center; gap: 10px;
+      background: var(--surface3);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+    .preview-strip.visible { display: flex; }
+    .preview-strip img {
+      width: 54px; height: 54px;
+      object-fit: cover; border-radius: 7px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .preview-info { flex: 1; font-size: .74rem; color: var(--text2); }
+    .preview-info strong { display: block; font-weight: 700; color: var(--green); margin-bottom: 2px; }
+    .preview-info span   { color: var(--muted); font-size: .67rem; }
+    .preview-strip .clear-btn {
+      background: transparent; border: 1.5px solid var(--border);
+      border-radius: 6px; padding: 4px 9px;
+      font-size: .73rem; color: var(--muted); cursor: pointer;
+      transition: all .15s; flex-shrink: 0; font-family: inherit;
+    }
+    .preview-strip .clear-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+
+    /* Price field with ₹ symbol */
+    .two-col  { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .pfx-wrap { position: relative; }
+    .pfx-sym  {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      font-weight: 800; color: var(--text2); font-size: .88rem;
+      pointer-events: none;
+    }
+    .pfx-wrap input { padding-left: 26px !important; }
+
+    /* Add button */
+    .btn-add {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none;
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      font-size: .9rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; letter-spacing: .2px;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: opacity .2s, transform .1s, box-shadow .2s;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    .btn-add:hover  { opacity: .9; box-shadow: 0 6px 22px var(--accent-glow); }
+    .btn-add:active { transform: scale(.98); }
+
+    /* ══ Toolbar / Search ════════════════════════════════════ */
+    .toolbar {
+      padding: 12px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+    }
+    .srch-wrap  { flex: 1; min-width: 150px; position: relative; }
+    .srch-wrap input { padding-left: 36px !important; font-size: .85rem !important; }
+    .srch-icon  {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--muted2); font-size: .9rem; pointer-events: none;
+    }
+    .cnt-badge {
+      font-size: .71rem; font-weight: 700; color: var(--muted);
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 12px; white-space: nowrap;
+    }
+
+    /* ══ Table ═══════════════════════════════════════════════ */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    thead tr { background: var(--surface3); border-bottom: 2px solid var(--border); }
+    th {
+      padding: 10px 15px;
+      font-size: .65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--muted); text-align: left; white-space: nowrap;
+    }
+    th:first-child { width: 58px; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .12s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr.row-low         { background: #fff5f5 !important; }
+    tbody tr.row-low:hover   { background: #feeaea !important; }
+    td { padding: 11px 15px; font-size: .86rem; vertical-align: middle; }
+
+    /* Product thumbnail */
+    .thumb {
+      width: 46px; height: 46px;
+      border-radius: 10px;
+      background: var(--surface3);
+      border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.35rem; overflow: hidden; flex-shrink: 0;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .prod-name { font-weight: 700; color: var(--text); }
+    .prod-date { font-size: .67rem; color: var(--muted2); margin-top: 2px; }
+
+    .sku-badge {
+      display: inline-block;
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 8px;
+      font-size: .7rem; font-family: 'Courier New', monospace;
+      color: var(--accent); letter-spacing: .3px;
+    }
+
+    .price-val { font-weight: 800; color: var(--green); font-size: .92rem; }
+
+    /* Qty controls */
+    .qty-ctrl { display: flex; align-items: center; gap: 7px; }
+    .qty-btn {
+      width: 28px; height: 28px;
+      border-radius: 7px; border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text2);
+      font-size: 1rem; font-weight: 700; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s; flex-shrink: 0;
+    }
+    .qty-btn:active { transform: scale(.88); }
+    .qty-btn.minus:hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
+    .qty-btn.plus:hover  { background: var(--green-light); border-color: var(--green); color: var(--green); }
+    .qty-btn:disabled    { opacity: .3; cursor: not-allowed; transform: none !important; }
+    .qty-num { min-width: 32px; text-align: center; font-size: .93rem; font-weight: 800; color: var(--text); }
+    .qty-num.is-low { color: var(--red); }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 20px; padding: 3px 9px;
+      font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+    }
+    .b-ok  { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+    .b-low { background: var(--red-light);   color: var(--red);   border: 1px solid var(--red-border); }
+    .b-out { background: #fef2f2; color: #991b1b; border: 1px solid var(--red-border); }
+
+    /* Delete button */
+    .btn-del {
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--muted); border-radius: 7px;
+      padding: 5px 11px; font-size: .78rem; font-family: inherit;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .btn-del:hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
+
+    /* ══ Empty State ═════════════════════════════════════════ */
+    .empty-state { padding: 60px 24px; text-align: center; }
+    .empty-state .ee { font-size: 3rem; display: block; margin-bottom: 12px; opacity: .3; }
+    .empty-state h3  { font-size: .95rem; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
+    .empty-state p   { font-size: .8rem; color: var(--muted); }
+
+    /* ══ Confirm Modal ═══════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,15,40,.45); backdrop-filter: blur(5px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 900; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px 28px;
+      max-width: 390px; width: 90%; box-shadow: var(--shadow-lg);
+      transform: scale(.95); transition: transform .2s;
+    }
+    .overlay.open .modal { transform: scale(1); }
+    .modal h3 { font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
+    .modal p  { font-size: .84rem; color: var(--text2); line-height: 1.6; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 9px; justify-content: flex-end; }
+    .btn-cancel {
+      background: var(--surface2); border: 1.5px solid var(--border);
+      color: var(--text2); border-radius: var(--radius-sm);
+      padding: 8px 18px; font-size: .84rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-cancel:hover { border-color: var(--muted); }
+    .btn-danger {
+      background: var(--red); color: #fff; border: none;
+      border-radius: var(--radius-sm); padding: 8px 18px;
+      font-size: .84rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+    }
+    .btn-danger:hover { opacity: .87; }
+    .btn-danger:active { transform: scale(.97); }
+
+    /* ══ Toast ═══════════════════════════════════════════════ */
+    #toast {
+      position: fixed; bottom: 26px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #1e2235; color: #e2e8f0;
+      border-radius: 10px; padding: 11px 20px;
+      font-size: .84rem; box-shadow: var(--shadow-lg);
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      z-index: 9999; display: flex; align-items: center; gap: 9px;
+      max-width: calc(100vw - 40px); white-space: nowrap;
+    }
+    #toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .tdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .t-ok   .tdot { background: #4ade80; }
+    .t-err  .tdot { background: #f87171; }
+    .t-info .tdot { background: #a5b4fc; }
+    .t-warn .tdot { background: #fcd34d; }
+
+    /* ══ Scrollbar ═══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo-box">📦</div>
+  <div class="hdr-title">
+    <h1>Stock<span>Pulse</span></h1>
+    <p>Inventory Management System</p>
+  </div>
+  <div class="hdr-right">
+    <button id="driveBtn" onclick="handleDriveClick()">
+      <span class="dot"></span>
+      <span id="driveBtnLbl">Connect Google Drive</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════════ -->
+<div class="wrap">
+
+  <!-- Google Drive Setup Banner -->
+  <div class="setup-banner" id="setupBanner" style="display:none">
+    <span class="sb-icon">⚙️</span>
+    <div style="flex:1">
+      <h4>Google Drive Image Upload — One-Time Setup</h4>
+      <p>
+        Open this file in a text editor and set <code>GOOGLE_CLIENT_ID</code> at the top of the
+        <code>&lt;script&gt;</code> block. You can still use <strong>Local Path</strong> mode without it.<br>
+        Steps: <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a>
+        → New Project → Enable <strong>Google Drive API</strong> → Credentials → Create
+        → OAuth 2.0 Client ID (Web) → add your GitHub Pages origin → copy Client ID.
+      </p>
+    </div>
+    <button class="sb-close" onclick="this.closest('.setup-banner').style.display='none'">✕</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card sc-a">
+      <span class="sc-icon">🏷️</span>
+      <div class="sc-label">Total Products</div>
+      <div class="sc-num" id="st-total">0</div>
+    </div>
+    <div class="stat-card sc-b">
+      <span class="sc-icon">💰</span>
+      <div class="sc-label">Total Stock Value</div>
+      <div class="sc-num" id="st-value">₹0</div>
+    </div>
+    <div class="stat-card sc-c">
+      <span class="sc-icon">⚠️</span>
+      <div class="sc-label">Low Stock Items</div>
+      <div class="sc-num" id="st-low">0</div>
+    </div>
+    <div class="stat-card sc-d">
+      <span class="sc-icon">📊</span>
+      <div class="sc-label">Total Units</div>
+      <div class="sc-num" id="st-units">0</div>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ┌─────────────────────────────────────┐
+         │       ADD PRODUCT FORM              │
+         └─────────────────────────────────────┘ -->
+    <div class="panel">
+      <div class="panel-head">➕ Add New Product</div>
+      <form id="addForm" class="add-form" novalidate autocomplete="off">
+
+        <!-- Image -->
+        <div class="fg">
+          <label>Item Picture</label>
+
+          <!-- Mode selector -->
+          <div class="mode-toggle">
+            <button type="button" class="mode-btn active" id="modeDrive" onclick="setMode('drive')">
+              ☁️ Google Drive
+            </button>
+            <button type="button" class="mode-btn" id="modeLocal" onclick="setMode('local')">
+              📁 Local Path
+            </button>
+          </div>
+
+          <!-- Google Drive upload zone -->
+          <div id="drivePanel">
+            <div class="dz" id="dropZone">
+              <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif" />
+              <span class="dz-icon" id="dzIcon">☁️</span>
+              <div class="dz-text" id="dzText">Click to choose &amp; upload to Drive</div>
+              <div class="dz-sub"  id="dzSub">JPG · PNG · GIF — saved to your Google Drive</div>
+            </div>
+          </div>
+
+          <!-- Local path zone -->
+          <div id="localPanel" style="display:none" class="local-wrap">
+            <input type="text" id="localInput" class="mono-input"
+                   placeholder="/Users/you/Pictures/item.jpg" />
+            <div class="path-hint">
+              Full path to image on this computer.<br>
+              <strong>Mac / Linux:</strong> <code>/Users/you/photo.jpg</code>&nbsp;&nbsp;
+              <strong>Windows:</strong> <code>C:/Users/you/photo.png</code>
+            </div>
+          </div>
+
+          <!-- Preview strip (shared) -->
+          <div class="preview-strip" id="previewStrip">
+            <img id="previewImg" alt="preview" />
+            <div class="preview-info">
+              <strong id="previewLabel">Image ready</strong>
+              <span id="previewSub"></span>
+            </div>
+            <button type="button" class="clear-btn" onclick="clearImg()">✕ Remove</button>
+          </div>
+        </div>
+
+        <!-- Name -->
+        <div class="fg">
+          <label for="iName">Item Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="iName" placeholder="e.g. Wireless Keyboard" maxlength="80" />
+        </div>
+
+        <!-- SKU -->
+        <div class="fg">
+          <label for="iSKU">SKU / Barcode <span style="color:var(--red)">*</span></label>
+          <input type="text" id="iSKU" placeholder="e.g. WKB-001-BLK" maxlength="50" />
+        </div>
+
+        <!-- Price + Qty -->
+        <div class="two-col">
+          <div class="fg">
+            <label for="iPrice">Price (₹) <span style="color:var(--red)">*</span></label>
+            <div class="pfx-wrap">
+              <span class="pfx-sym">₹</span>
+              <input type="number" id="iPrice" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+          <div class="fg">
+            <label for="iQty">Stock Qty <span style="color:var(--red)">*</span></label>
+            <input type="number" id="iQty" placeholder="0" min="0" step="1" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn-add">➕ Add to Inventory</button>
+      </form>
+    </div>
+
+    <!-- ┌─────────────────────────────────────┐
+         │       INVENTORY TABLE               │
+         └─────────────────────────────────────┘ -->
+    <div class="panel" style="min-height:420px">
+      <div class="panel-head">📋 Inventory List</div>
+
+      <!-- Search toolbar -->
+      <div class="toolbar">
+        <div class="srch-wrap">
+          <span class="srch-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search by name or SKU…" />
+        </div>
+        <span class="cnt-badge" id="cntBadge">0 items</span>
+      </div>
+
+      <!-- Data table -->
+      <div class="tbl-wrap">
+        <table id="invTable" style="display:none">
+          <thead>
+            <tr>
+              <th>Img</th>
+              <th>Product</th>
+              <th>SKU / Barcode</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tBody"></tbody>
+        </table>
+
+        <div class="empty-state" id="emptyState">
+          <span class="ee">📭</span>
+          <h3 id="emptyH">Your inventory is empty</h3>
+          <p  id="emptyP">Add your first product using the form on the left.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /layout -->
+</div><!-- /wrap -->
+
+<!-- ══ Delete Confirm Modal ══════════════════════════════════ -->
+<div class="overlay" id="delModal">
+  <div class="modal">
+    <h3>🗑️ Delete Product</h3>
+    <p>Permanently remove <strong id="delName"></strong> from inventory? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelDel">Cancel</button>
+      <button class="btn-danger" id="confirmDel">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Toast ══════════════════════════════════════════════════ -->
+<div id="toast"><div class="tdot"></div><span id="toastMsg"></span></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  ⚙️  CONFIGURATION — fill in before deploying           ║
+   ╠══════════════════════════════════════════════════════════╣
+   ║                                                          ║
+   ║  GOOGLE_CLIENT_ID:                                       ║
+   ║  1. Go to https://console.cloud.google.com/             ║
+   ║  2. Create a project → Enable "Google Drive API"        ║
+   ║  3. Credentials → Create → OAuth 2.0 → Web application  ║
+   ║  4. Add Authorized JS origins:                           ║
+   ║       http://localhost  (for local testing)              ║
+   ║       https://YOUR_GITHUB_USERNAME.github.io            ║
+   ║  5. Copy the Client ID below                            ║
+   ║                                                          ║
+   ╚══════════════════════════════════════════════════════════╝ */
+const GOOGLE_CLIENT_ID = '';   // ← paste your Client ID here
+
+/* ─── App State ──────────────────────────────────────────── */
+let inventory   = [];
+let searchQ     = '';
+let pendingDelId= null;
+let gToken      = null;
+let tokenClient = null;
+let imgMode     = 'drive';
+let currentImg  = null;  // { type:'drive'|'local', value:fileId|path, label:string }
+let pendingUpCb = null;  // callback after auth completes during upload
+
+/* ─── Load persisted data ────────────────────────────────── */
+try { inventory = JSON.parse(localStorage.getItem('ims_v3') || '[]'); } catch(e) { inventory = []; }
+
+/* ─── Init ───────────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  const hasCid = Boolean(GOOGLE_CLIENT_ID.trim());
+
+  if (!hasCid) {
+    document.getElementById('setupBanner').style.display = 'flex';
+    setMode('local');          // fall back to local path when no Drive config
+    document.getElementById('driveBtn').style.display = 'none';
+  }
+
+  render();
+  updateStats();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   GOOGLE DRIVE
+═══════════════════════════════════════════════════════════ */
+function ensureTokenClient() {
+  if (tokenClient) return true;
+  if (!GOOGLE_CLIENT_ID.trim()) return false;
+  if (!window.google?.accounts?.oauth2) {
+    toast('Google Identity Services not loaded. Check your internet connection.', 'err');
+    return false;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope:     'https://www.googleapis.com/auth/drive.file',
+    callback:  onToken,
+  });
+  return true;
+}
+
+function onToken(resp) {
+  if (resp.error) { toast('Google auth error: ' + resp.error, 'err'); return; }
+  gToken = resp.access_token;
+  updateDriveBtn();
+  if (pendingUpCb) { pendingUpCb(); pendingUpCb = null; }
+}
+
+function updateDriveBtn() {
+  const btn = document.getElementById('driveBtn');
+  const lbl = document.getElementById('driveBtnLbl');
+  if (gToken) {
+    btn.classList.add('connected');
+    lbl.textContent = '✓ Drive Connected';
+  } else {
+    btn.classList.remove('connected');
+    lbl.textContent = 'Connect Google Drive';
+  }
+}
+
+function handleDriveClick() {
+  if (!GOOGLE_CLIENT_ID.trim()) { toast('Set GOOGLE_CLIENT_ID in the source first.', 'err'); return; }
+  if (gToken) {
+    try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
+    gToken = null;
+    updateDriveBtn();
+    toast('Disconnected from Google Drive.', 'info');
+  } else {
+    if (!ensureTokenClient()) return;
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+}
+
+/* ─── Upload flow ────────────────────────────────────────── */
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!['image/jpeg','image/jpg','image/png','image/gif'].includes(file.type)) {
+    return toast('Only JPG, PNG, GIF are supported.', 'err');
+  }
+
+  if (!gToken) {
+    pendingUpCb = () => doUpload(file);
+    if (!ensureTokenClient()) return;
+    tokenClient.requestAccessToken({ prompt: '' });
+  } else {
+    await doUpload(file);
+  }
+});
+
+async function doUpload(file) {
+  setDZ('uploading', '<span class="spinner"></span>', 'Uploading to Google Drive…', '');
+
+  try {
+    const fileId = await uploadToDrive(file);
+    const thumbUrl = driveThumb(fileId);
+
+    currentImg = { type: 'drive', value: fileId, label: file.name };
+    showPreview(thumbUrl, file.name, 'Saved to your Google Drive ✓');
+    setDZ('done', '✅', file.name.length > 28 ? file.name.slice(0,28)+'…' : file.name, 'Click to replace image');
+    toast('Image uploaded to Google Drive!', 'ok');
+  } catch(err) {
+    resetDZ();
+    toast('Upload failed: ' + err.message, 'err');
+    if (/401|unauthorized/i.test(err.message)) { gToken = null; updateDriveBtn(); }
+  }
+}
+
+async function uploadToDrive(file) {
+  /* 1. Upload file */
+  const meta = { name: file.name, mimeType: file.type };
+  const body = new FormData();
+  body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  body.append('file', file);
+
+  const upRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { Authorization: `Bearer ${gToken}` }, body }
+  );
+  if (!upRes.ok) {
+    const e = await upRes.json().catch(() => ({}));
+    throw new Error(e.error?.message || upRes.statusText);
+  }
+  const { id } = await upRes.json();
+
+  /* 2. Make publicly readable so thumbnail loads without auth */
+  const pmRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${id}/permissions`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${gToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader' })
+    }
+  );
+  if (!pmRes.ok) {
+    const e = await pmRes.json().catch(() => ({}));
+    throw new Error('Permission error: ' + (e.error?.message || pmRes.statusText));
+  }
+  return id;
+}
+
+/* Thumbnail URL for publicly-shared Drive file */
+function driveThumb(fileId, sz = 400) {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${sz}-h${sz}`;
+}
+
+/* Fallback view URL */
+function driveView(fileId) {
+  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+}
+
+/* ─── DZ helpers ─────────────────────────────────────────── */
+function setDZ(cls, icon, text, sub) {
+  const dz = document.getElementById('dropZone');
+  dz.className = 'dz ' + cls;
+  document.getElementById('dzIcon').innerHTML = icon;
+  document.getElementById('dzText').textContent = text;
+  document.getElementById('dzSub').textContent  = sub;
+  document.getElementById('fileInput').disabled = (cls === 'uploading');
+}
+function resetDZ() {
+  setDZ('', '☁️', 'Click to choose & upload to Drive', 'JPG · PNG · GIF — saved to your Google Drive');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IMAGE MODE
+═══════════════════════════════════════════════════════════ */
+function setMode(m) {
+  imgMode = m;
+  document.getElementById('modeDrive').classList.toggle('active', m === 'drive');
+  document.getElementById('modeLocal').classList.toggle('active', m === 'local');
+  document.getElementById('drivePanel').style.display = m === 'drive' ? '' : 'none';
+  document.getElementById('localPanel').style.display = m === 'local' ? '' : 'none';
+  clearImg();
+}
+
+/* ─── Local path preview ─────────────────────────────────── */
+document.getElementById('localInput').addEventListener('input', debounce(() => {
+  const p = document.getElementById('localInput').value.trim();
+  if (!p) { clearImg(); return; }
+  currentImg = { type: 'local', value: p, label: p.split(/[/\\]/).pop() };
+  showPreview(pathToURL(p), currentImg.label, 'From local drive');
+}, 420));
+
+function pathToURL(p) {
+  if (p.startsWith('file://')) return p;
+  if (/^[A-Za-z]:[/\\]/.test(p)) return 'file:///' + p.replace(/\\/g, '/');
+  if (p.startsWith('/')) return 'file://' + p;
+  return p;
+}
+
+/* ─── Shared preview strip ───────────────────────────────── */
+function showPreview(url, label, sub) {
+  const strip = document.getElementById('previewStrip');
+  const img   = document.getElementById('previewImg');
+  img.src = url;
+  img.onload  = () => {
+    strip.classList.add('visible');
+    document.getElementById('previewLabel').textContent = label || 'Image ready';
+    document.getElementById('previewSub').textContent   = sub  || '';
+  };
+  img.onerror = () => {
+    strip.classList.remove('visible');
+    currentImg = null;
+    if (imgMode === 'drive') resetDZ();
+  };
+}
+
+function clearImg() {
+  currentImg = null;
+  document.getElementById('previewStrip').classList.remove('visible');
+  document.getElementById('previewImg').src = '';
+  document.getElementById('localInput').value = '';
+  resetDZ();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADD PRODUCT FORM
+═══════════════════════════════════════════════════════════ */
+document.getElementById('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+
+  const name  = document.getElementById('iName').value.trim();
+  const sku   = document.getElementById('iSKU').value.trim().toUpperCase();
+  const price = parseFloat(document.getElementById('iPrice').value);
+  const qty   = parseInt(document.getElementById('iQty').value, 10);
+
+  if (!name)                     return toast('Item Name is required.', 'err');
+  if (!sku)                      return toast('SKU / Barcode is required.', 'err');
+  if (isNaN(price) || price < 0) return toast('Enter a valid price (≥ ₹0).', 'err');
+  if (isNaN(qty)   || qty   < 0) return toast('Enter a valid stock quantity (≥ 0).', 'err');
+  if (inventory.some(i => i.sku === sku)) return toast(`SKU "${sku}" already exists.`, 'err');
+
+  const item = {
+    id:    Date.now(),
+    name, sku, price, qty,
+    img:   currentImg || null,
+    added: new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+  };
+
+  inventory.push(item);
+  persist();
+  render();
+  updateStats();
+  document.getElementById('addForm').reset();
+  clearImg();
+  toast(`"${name}" added to inventory!`, 'ok');
+});
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', () => {
+  searchQ = document.getElementById('searchInput').value.trim().toLowerCase();
+  render();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   STOCK ADJUSTMENT
+═══════════════════════════════════════════════════════════ */
+function adjQty(id, d) {
+  const item = inventory.find(i => i.id === id);
+  if (!item) return;
+  const next = item.qty + d;
+  if (next < 0) return toast('Quantity cannot go below 0.', 'err');
+  item.qty = next;
+  persist(); render(); updateStats();
+  if (next === 0)    toast(`🚫 "${item.name}" is out of stock!`, 'warn');
+  else if (next < 5) toast(`⚠️ "${item.name}" — only ${next} left!`, 'warn');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DELETE
+═══════════════════════════════════════════════════════════ */
+function reqDel(id) {
+  const item = inventory.find(i => i.id === id);
+  if (!item) return;
+  pendingDelId = id;
+  document.getElementById('delName').textContent = `"${item.name}"`;
+  document.getElementById('delModal').classList.add('open');
+}
+document.getElementById('cancelDel').addEventListener('click', closeDelModal);
+document.getElementById('delModal').addEventListener('click', e => { if (e.target.id === 'delModal') closeDelModal(); });
+document.getElementById('confirmDel').addEventListener('click', () => {
+  if (!pendingDelId) return;
+  const item = inventory.find(i => i.id === pendingDelId);
+  inventory = inventory.filter(i => i.id !== pendingDelId);
+  closeDelModal();
+  persist(); render(); updateStats();
+  if (item) toast(`"${item.name}" deleted.`, 'info');
+});
+function closeDelModal() {
+  document.getElementById('delModal').classList.remove('open');
+  pendingDelId = null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER TABLE
+═══════════════════════════════════════════════════════════ */
+function render() {
+  const q    = searchQ;
+  const list = inventory.filter(i =>
+    i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q)
+  );
+
+  document.getElementById('cntBadge').textContent = `${list.length} item${list.length !== 1 ? 's' : ''}`;
+
+  const tbl = document.getElementById('invTable');
+  const emp = document.getElementById('emptyState');
+
+  if (list.length === 0) {
+    tbl.style.display = 'none'; emp.style.display = '';
+    document.getElementById('emptyH').textContent = inventory.length === 0
+      ? 'Your inventory is empty' : 'No results found';
+    document.getElementById('emptyP').textContent = inventory.length === 0
+      ? 'Add your first product using the form on the left.'
+      : `No match for "${document.getElementById('searchInput').value}". Try a different name or SKU.`;
+    return;
+  }
+
+  emp.style.display = 'none'; tbl.style.display = '';
+
+  document.getElementById('tBody').innerHTML = list.map(item => {
+    const low = item.qty < 5;
+
+    /* thumbnail */
+    let thumb;
+    if (item.img?.type === 'drive') {
+      const url = driveThumb(item.img.value);
+      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}"
+                 onerror="this.src='${esc(driveView(item.img.value))}';this.onerror=()=>{this.parentElement.innerHTML='📦';}" /></div>`;
+    } else if (item.img?.type === 'local') {
+      const url = pathToURL(item.img.value);
+      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}"
+                 onerror="this.parentElement.innerHTML='📦'" /></div>`;
+    } else {
+      thumb = `<div class="thumb">📦</div>`;
+    }
+
+    /* status badge */
+    const badge = item.qty === 0
+      ? `<span class="badge b-out">🚫 Out of Stock</span>`
+      : low
+        ? `<span class="badge b-low">⚠️ Low Stock</span>`
+        : `<span class="badge b-ok">✔ In Stock</span>`;
+
+    return `
+      <tr class="${low ? 'row-low' : ''}" data-id="${item.id}">
+        <td>${thumb}</td>
+        <td>
+          <div class="prod-name">${esc(item.name)}</div>
+          <div class="prod-date">Added ${esc(item.added)}</div>
+        </td>
+        <td><span class="sku-badge">${esc(item.sku)}</span></td>
+        <td class="price-val">₹${fmt(item.price)}</td>
+        <td>
+          <div class="qty-ctrl">
+            <button class="qty-btn minus" onclick="adjQty(${item.id},-1)"
+                    ${item.qty === 0 ? 'disabled' : ''} title="Decrease">−</button>
+            <span class="qty-num ${low ? 'is-low' : ''}">${item.qty}</span>
+            <button class="qty-btn plus" onclick="adjQty(${item.id},1)" title="Increase">+</button>
+          </div>
+        </td>
+        <td>${badge}</td>
+        <td><button class="btn-del" onclick="reqDel(${item.id})">🗑 Delete</button></td>
+      </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════════════════ */
+function updateStats() {
+  const total = inventory.length;
+  const value = inventory.reduce((s, i) => s + i.price * i.qty, 0);
+  const low   = inventory.filter(i => i.qty < 5).length;
+  const units = inventory.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-value').textContent = '₹' + fmt(value);
+  document.getElementById('st-low').textContent   = low;
+  document.getElementById('st-units').textContent = units.toLocaleString('en-IN');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════════════════ */
+function persist() { localStorage.setItem('ims_v3', JSON.stringify(inventory)); }
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+let _tt;
+function toast(msg, type = 'info') {
+  const map = { ok:'t-ok', err:'t-err', info:'t-info', warn:'t-warn' };
+  const el  = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  el.className = 'visible ' + (map[type] || 't-info');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { el.className = map[type] || 't-info'; }, 3500);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(n) {
+  return Number(n).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+</script>
+</body>
+</html>
