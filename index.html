@@ -107,6 +107,20 @@
     #driveBtn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); flex-shrink: 0; }
     #driveBtn.connected { border-color: var(--green); color: var(--green); background: var(--green-light); }
     #driveBtn.connected .dot { background: var(--green); }
+    #syncStatus {
+      padding: 6px 10px;
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .68rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    #syncStatus.syncing { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    #syncStatus.synced  { border-color: var(--green); color: var(--green); background: var(--green-light); }
+    #syncStatus.offline { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-light); }
+    #syncStatus.error   { border-color: var(--red); color: var(--red); background: var(--red-light); }
 
     /* ══ Container ═══════════════════════════════════════════ */
     .wrap { max-width: 1320px; margin: 0 auto; padding: 28px 22px 0; }
@@ -666,6 +680,7 @@
     <p>Inventory Management System</p>
   </div>
   <div class="hdr-right">
+    <div id="syncStatus" title="Inventory sync status">Local cache</div>
     <button id="driveBtn" onclick="handleDriveClick()">
       <span class="dot"></span>
       <span id="driveBtnLbl">Connect Google Drive</span>
@@ -949,23 +964,36 @@ let gToken      = null;
 let tokenClient = null;
 let imgMode     = 'drive';
 let currentImg  = null;  // { type:'drive'|'local', value:fileId|path, label:string }
-let pendingUpCb = null;  // callback after auth completes during upload
+let pendingAuthCbs = [];
+let imsFolderId = null;
+let inventoryFileId = null;
+let syncTimer = null;
+const IMS_FOLDER_NAME = 'IMS';
+const IMS_INVENTORY_FILE = 'inventory.json';
 
 /* ─── Load persisted data ────────────────────────────────── */
 try { inventory = JSON.parse(localStorage.getItem('ims_v3') || '[]'); } catch(e) { inventory = []; }
 
 /* ─── Init ───────────────────────────────────────────────── */
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   const hasCid = Boolean(GOOGLE_CLIENT_ID.trim());
 
   if (!hasCid) {
     document.getElementById('setupBanner').style.display = 'flex';
     setMode('local');          // fall back to local path when no Drive config
     document.getElementById('driveBtn').style.display = 'none';
+    setSyncStatus('offline', 'Local only');
+  } else {
+    setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
   }
 
   render();
   updateStats();
+
+  if (hasCid && navigator.onLine) {
+    queueAfterAuth(() => syncFromDriveOnStartup());
+    if (ensureTokenClient()) tokenClient.requestAccessToken({ prompt: '' });
+  }
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -987,10 +1015,17 @@ function ensureTokenClient() {
 }
 
 function onToken(resp) {
-  if (resp.error) { toast('Google auth error: ' + resp.error, 'err'); return; }
+  if (resp.error) {
+    if (!['access_denied', 'consent_required', 'interaction_required', 'popup_closed_by_user'].includes(resp.error)) {
+      toast('Google auth error: ' + resp.error, 'err');
+    }
+    setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
+    return;
+  }
   gToken = resp.access_token;
   updateDriveBtn();
-  if (pendingUpCb) { pendingUpCb(); pendingUpCb = null; }
+  const cbs = pendingAuthCbs.splice(0);
+  cbs.forEach(cb => Promise.resolve(cb()).catch(() => {}));
 }
 
 function updateDriveBtn() {
@@ -1011,9 +1046,11 @@ function handleDriveClick() {
     try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
     gToken = null;
     updateDriveBtn();
+    setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     toast('Disconnected from Google Drive.', 'info');
   } else {
     if (!ensureTokenClient()) return;
+    queueAfterAuth(() => syncFromDriveOnStartup(true));
     tokenClient.requestAccessToken({ prompt: 'consent' });
   }
 }
@@ -1028,7 +1065,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   }
 
   if (!gToken) {
-    pendingUpCb = () => doUpload(file);
+    queueAfterAuth(() => doUpload(file));
     if (!ensureTokenClient()) return;
     tokenClient.requestAccessToken({ prompt: '' });
   } else {
@@ -1055,8 +1092,10 @@ async function doUpload(file) {
 }
 
 async function uploadToDrive(file) {
+  const folderId = await ensureIMSFolder();
+
   /* 1. Upload file */
-  const meta = { name: file.name, mimeType: file.type };
+  const meta = { name: file.name, mimeType: file.type, parents: [folderId] };
   const body = new FormData();
   body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
   body.append('file', file);
@@ -1085,6 +1124,131 @@ async function uploadToDrive(file) {
     throw new Error('Permission error: ' + (e.error?.message || pmRes.statusText));
   }
   return id;
+}
+
+function queueAfterAuth(cb) {
+  pendingAuthCbs.push(cb);
+}
+
+function setSyncStatus(state, text) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.className = state ? state : '';
+  el.textContent = text;
+}
+
+function scheduleDriveSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncInventoryToDrive().catch(() => {});
+  }, 450);
+}
+
+async function driveJson(url, opts = {}) {
+  const headers = { Authorization: 'Bearer ' + gToken, ...(opts.headers || {}) };
+  const res = await fetch(url, { ...opts, headers });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error?.message || res.statusText || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+function qName(name) {
+  return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+async function ensureIMSFolder() {
+  if (imsFolderId) return imsFolderId;
+  const q = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and name='${qName(IMS_FOLDER_NAME)}' and trashed=false`);
+  const found = await driveJson(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`);
+  if (found.files?.[0]?.id) {
+    imsFolderId = found.files[0].id;
+    return imsFolderId;
+  }
+  const created = await driveJson('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: IMS_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  imsFolderId = created.id;
+  return imsFolderId;
+}
+
+async function getInventoryFileId(folderId) {
+  if (inventoryFileId) return inventoryFileId;
+  const q = encodeURIComponent(`name='${qName(IMS_INVENTORY_FILE)}' and '${folderId}' in parents and trashed=false`);
+  const found = await driveJson(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`);
+  inventoryFileId = found.files?.[0]?.id || null;
+  return inventoryFileId;
+}
+
+async function loadInventoryFromDrive() {
+  if (!gToken || !navigator.onLine) return false;
+  const folderId = await ensureIMSFolder();
+  const fileId = await getInventoryFileId(folderId);
+  if (!fileId) return false;
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  if (!res.ok) throw new Error('Could not download inventory.json');
+
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error('inventory.json is invalid');
+  inventory = data;
+  persist({ syncDrive: false });
+  return true;
+}
+
+async function syncInventoryToDrive() {
+  if (!gToken || !navigator.onLine) {
+    setSyncStatus('offline', 'Offline (local cache)');
+    return false;
+  }
+
+  setSyncStatus('syncing', 'Syncing…');
+  const folderId = await ensureIMSFolder();
+  const fileId = await getInventoryFileId(folderId);
+  const blob = new Blob([JSON.stringify(inventory)], { type: 'application/json' });
+
+  if (fileId) {
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: IMS_INVENTORY_FILE })], { type: 'application/json' }));
+    form.append('file', blob);
+    await driveJson(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id`, {
+      method: 'PATCH',
+      body: form
+    });
+  } else {
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: IMS_INVENTORY_FILE, parents: [folderId], mimeType: 'application/json' })], { type: 'application/json' }));
+    form.append('file', blob);
+    const created = await driveJson('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      body: form
+    });
+    inventoryFileId = created.id;
+  }
+
+  setSyncStatus('synced', 'Synced');
+  return true;
+}
+
+async function syncFromDriveOnStartup(showToast = false) {
+  if (!gToken || !navigator.onLine) return;
+  setSyncStatus('syncing', 'Syncing…');
+  try {
+    const loaded = await loadInventoryFromDrive();
+    if (!loaded) await syncInventoryToDrive();
+    render();
+    updateStats();
+    if (showToast) toast('Google Drive sync enabled.', 'ok');
+    setSyncStatus('synced', 'Synced');
+  } catch (e) {
+    setSyncStatus('offline', 'Using local cache');
+    if (showToast) toast('Drive sync unavailable. Using local cache.', 'warn');
+  }
 }
 
 /* Thumbnail URL for publicly-shared Drive file */
@@ -1400,7 +1564,19 @@ function updateStats() {
 /* ═══════════════════════════════════════════════════════════
    PERSISTENCE
 ═══════════════════════════════════════════════════════════ */
-function persist() { localStorage.setItem('ims_v3', JSON.stringify(inventory)); }
+function persist(opts = {}) {
+  localStorage.setItem('ims_v3', JSON.stringify(inventory));
+  if (opts.syncDrive === false) return;
+  if (!navigator.onLine) {
+    setSyncStatus('offline', 'Offline (local cache)');
+    return;
+  }
+  if (!gToken) {
+    setSyncStatus('offline', 'Connect Drive to sync');
+    return;
+  }
+  if (gToken) scheduleDriveSync();
+}
 
 /* ═══════════════════════════════════════════════════════════
    TOAST
