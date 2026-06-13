@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SimpLx — Inventory Management</title>
 
-  <!-- Google Identity Services (for Drive OAuth) -->
   <script src="https://accounts.google.com/gsi/client" async></script>
 
   <style>
@@ -238,28 +238,6 @@
     input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
     input::placeholder { color: var(--muted2); }
 
-    /* Mode toggle: Drive / Local */
-    .mode-toggle {
-      display: flex; gap: 0;
-      background: var(--surface3);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 3px; overflow: hidden;
-    }
-    .mode-btn {
-      flex: 1; padding: 6px 4px;
-      background: transparent; border: none;
-      border-radius: 6px;
-      font-size: .73rem; font-weight: 600; font-family: inherit;
-      color: var(--muted); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 5px;
-      transition: all .15s; white-space: nowrap;
-    }
-    .mode-btn.active {
-      background: var(--surface); color: var(--accent);
-      box-shadow: 0 1px 5px rgba(0,0,0,.09);
-    }
-
     /* Google Drive upload drop zone */
     .dz {
       border: 2px dashed var(--border);
@@ -292,16 +270,6 @@
       border-radius: 50%;
       animation: spin .65s linear infinite;
       vertical-align: middle; margin-right: 5px;
-    }
-
-    /* Local path */
-    .local-wrap { display: flex; flex-direction: column; gap: 6px; }
-    .mono-input { font-family: 'Courier New', monospace !important; font-size: .78rem !important; }
-    .path-hint  { font-size: .67rem; color: var(--muted); line-height: 1.55; }
-    .path-hint code {
-      background: var(--surface3); padding: 1px 5px;
-      border-radius: 4px; font-family: 'Courier New', monospace;
-      font-size: .67rem; color: var(--accent2);
     }
 
     /* Image preview strip */
@@ -410,7 +378,7 @@
 
     .prod-name { font-weight: 700; color: var(--text); }
     .prod-date { font-size: .67rem; color: var(--muted2); margin-top: 2px; }
-
+    
     .sku-badge {
       display: inline-block;
       background: var(--surface3); border: 1px solid var(--border);
@@ -563,6 +531,33 @@
       pointer-events: none;
     }
 
+    /* Editable Inputs within Quick View */
+    .qv-edit-input {
+      background: transparent;
+      border: 1px dashed transparent;
+      border-radius: 4px;
+      font-family: inherit;
+      color: inherit;
+      width: 100%;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .qv-edit-input:hover { border-color: var(--border2); }
+    .qv-edit-input:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    
+    .qv-img-edit-btn {
+      position: absolute; bottom: 12px; right: 12px; z-index: 3;
+      background: rgba(255,255,255,.93); backdrop-filter: blur(4px);
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 6px 12px; font-size: .75rem; font-weight: 700; color: var(--text2);
+      cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.14); transition: all .15s;
+    }
+    .qv-img-edit-btn:hover { color: var(--accent); border-color: var(--accent); }
+
     /* Close button (top-right of hero) */
     .qv-close {
       position: absolute; top: 12px; right: 12px; z-index: 3;
@@ -580,10 +575,12 @@
     /* Body */
     .qv-body { padding: 20px 22px 24px; }
 
-    .qv-name {
+    #qvName {
       font-size: 1.22rem; font-weight: 900;
       color: var(--text); line-height: 1.25; margin-bottom: 4px;
+      padding: 2px 4px; margin-left: -4px;
     }
+    
     .qv-meta {
       font-size: .71rem; color: var(--muted2); margin-bottom: 18px;
       display: flex; align-items: center; gap: 8px;
@@ -601,9 +598,10 @@
       font-size: .63rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: 1px; color: var(--muted); flex-shrink: 0;
     }
-    .qv-sku-val {
+    #qvSku {
       font-family: 'Courier New', monospace; font-size: .9rem;
       font-weight: 700; color: var(--accent); letter-spacing: .4px;
+      padding: 2px 4px; margin-left: -4px;
     }
 
     /* Info cards grid */
@@ -613,7 +611,7 @@
     }
     .qv-card {
       background: var(--surface2); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 13px 15px;
+      border-radius: var(--radius-sm); padding: 13px 15px; position: relative;
     }
     .qv-card-lbl {
       font-size: .63rem; font-weight: 700; text-transform: uppercase;
@@ -622,8 +620,12 @@
     .qv-card-val {
       font-size: 1.18rem; font-weight: 900; color: var(--text); line-height: 1;
     }
-    .qv-card.c-price .qv-card-val { color: var(--green); }
+    
+    #qvPrice { font-weight: 900; color: var(--green); font-size: 1.18rem; padding: 2px; margin-left: -2px; width: 80%; }
+    #qvSize  { font-weight: 900; color: var(--text); font-size: 1.18rem; padding: 2px; margin-left: -2px; width: 100%; }
     .qv-card.c-qty   .qv-card-val.is-low { color: var(--red); }
+    .qv-pfx-sym { position: absolute; left: 15px; top: 32px; font-weight: 900; color: var(--green); font-size: 1.18rem; pointer-events: none;}
+    .c-price #qvPrice { padding-left: 16px; }
 
     /* Stock value highlight strip */
     .qv-value-strip {
@@ -670,9 +672,6 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════
-     HEADER
-══════════════════════════════════════════════════════════ -->
 <header>
   <div class="logo-box">📦</div>
   <div class="hdr-title">
@@ -688,19 +687,15 @@
   </div>
 </header>
 
-<!-- ══════════════════════════════════════════════════════════
-     MAIN
-══════════════════════════════════════════════════════════ -->
 <div class="wrap">
 
-  <!-- Google Drive Setup Banner -->
   <div class="setup-banner" id="setupBanner" style="display:none">
     <span class="sb-icon">⚙️</span>
     <div style="flex:1">
       <h4>Google Drive Image Upload — One-Time Setup</h4>
       <p>
         Open this file in a text editor and set <code>GOOGLE_CLIENT_ID</code> at the top of the
-        <code>&lt;script&gt;</code> block. You can still use <strong>Local Path</strong> mode without it.<br>
+        <code>&lt;script&gt;</code> block.
         Steps: <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a>
         → New Project → Enable <strong>Google Drive API</strong> → Credentials → Create
         → OAuth 2.0 Client ID (Web) → add your GitHub Pages origin → copy Client ID.
@@ -709,7 +704,6 @@
     <button class="sb-close" onclick="this.closest('.setup-banner').style.display='none'">✕</button>
   </div>
 
-  <!-- Stats -->
   <div class="stats">
     <div class="stat-card sc-a">
       <span class="sc-icon">🏷️</span>
@@ -735,28 +729,12 @@
 
   <div class="layout">
 
-    <!-- ┌─────────────────────────────────────┐
-         │       ADD PRODUCT FORM              │
-         └─────────────────────────────────────┘ -->
     <div class="panel">
       <div class="panel-head">➕ Add New Product</div>
       <form id="addForm" class="add-form" novalidate autocomplete="off">
 
-        <!-- Image -->
         <div class="fg">
-          <label>Item Picture</label>
-
-          <!-- Mode selector -->
-          <div class="mode-toggle">
-            <button type="button" class="mode-btn active" id="modeDrive" onclick="setMode('drive')">
-              ☁️ Google Drive
-            </button>
-            <button type="button" class="mode-btn" id="modeLocal" onclick="setMode('local')">
-              📁 Local Path
-            </button>
-          </div>
-
-          <!-- Google Drive upload zone -->
+          <label>Item Picture (Google Drive)</label>
           <div id="drivePanel">
             <div class="dz" id="dropZone">
               <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif" />
@@ -765,19 +743,6 @@
               <div class="dz-sub"  id="dzSub">JPG · PNG · GIF — saved to your Google Drive</div>
             </div>
           </div>
-
-          <!-- Local path zone -->
-          <div id="localPanel" style="display:none" class="local-wrap">
-            <input type="text" id="localInput" class="mono-input"
-                   placeholder="/Users/you/Pictures/item.jpg" />
-            <div class="path-hint">
-              Full path to image on this computer.<br>
-              <strong>Mac / Linux:</strong> <code>/Users/you/photo.jpg</code>&nbsp;&nbsp;
-              <strong>Windows:</strong> <code>C:/Users/you/photo.png</code>
-            </div>
-          </div>
-
-          <!-- Preview strip (shared) -->
           <div class="preview-strip" id="previewStrip">
             <img id="previewImg" alt="preview" />
             <div class="preview-info">
@@ -788,19 +753,20 @@
           </div>
         </div>
 
-        <!-- Name -->
         <div class="fg">
           <label for="iName">Item Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="iName" placeholder="e.g. Parking Tiles 1'x1'" maxlength="80" />
         </div>
-
-        <!-- SKU -->
         <div class="fg">
           <label for="iSKU">Code <span style="color:var(--red)">*</span></label>
           <input type="text" id="iSKU" placeholder="e.g. WKB-001-BLK" maxlength="50" />
         </div>
+        
+        <div class="fg">
+          <label for="iSize">Size / Dimensions</label>
+          <input type="text" id="iSize" placeholder="e.g. 1'x1' or 500ml" maxlength="50" />
+        </div>
 
-        <!-- Price + Qty -->
         <div class="two-col">
           <div class="fg">
             <label for="iPrice">Price (₹) <span style="color:var(--red)">*</span></label>
@@ -819,22 +785,17 @@
       </form>
     </div>
 
-    <!-- ┌─────────────────────────────────────┐
-         │       INVENTORY TABLE               │
-         └─────────────────────────────────────┘ -->
     <div class="panel" style="min-height:420px">
       <div class="panel-head">📋 Inventory List</div>
 
-      <!-- Search toolbar -->
       <div class="toolbar">
         <div class="srch-wrap">
           <span class="srch-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="Search by name or SKU…" />
+          <input type="text" id="searchInput" placeholder="Search by name, SKU, or size…" />
         </div>
         <span class="cnt-badge" id="cntBadge">0 items</span>
       </div>
 
-      <!-- Data table -->
       <div class="tbl-wrap">
         <table id="invTable" style="display:none">
           <thead>
@@ -842,9 +803,9 @@
               <th>Img</th>
               <th>Product</th>
               <th>Code</th>
+              <th>Size</th>
               <th>Price</th>
               <th>Stock</th>
-              <th>Status</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -859,40 +820,38 @@
       </div>
     </div>
 
-  </div><!-- /layout -->
-</div><!-- /wrap -->
-
-<!-- ══ Quick View Modal ══════════════════════════════════════ -->
-<div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
+  </div></div><div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
   <div class="qv-panel" id="qvPanel">
 
-    <!-- Close button sits on top of the hero image -->
     <button class="qv-close" onclick="closeQV()" title="Close (Esc)">✕</button>
 
-    <!-- Hero image -->
     <div class="qv-hero" id="qvHero">
       <img id="qvImg" alt="" style="display:none" />
       <div class="qv-ph" id="qvPh">📦</div>
+      <label for="qvImgInput" class="qv-img-edit-btn">📷 Change Image</label>
+      <input type="file" id="qvImgInput" style="display:none" accept="image/jpeg,image/jpg,image/png,image/gif" />
     </div>
 
-    <!-- Detail body -->
     <div class="qv-body">
-      <div class="qv-name" id="qvName">—</div>
+      <input type="text" class="qv-edit-input" id="qvName" title="Click to edit name" />
       <div class="qv-meta">
         <span>🗓 <span id="qvAdded">—</span></span>
       </div>
 
-      <!-- SKU -->
       <div class="qv-sku-strip">
         <span class="qv-sku-lbl">Code</span>
-        <span class="qv-sku-val" id="qvSku">—</span>
+        <input type="text" class="qv-edit-input" id="qvSku" title="Click to edit code" />
       </div>
 
-      <!-- Price + Qty cards -->
       <div class="qv-grid">
         <div class="qv-card c-price">
           <div class="qv-card-lbl">Unit Price</div>
-          <div class="qv-card-val" id="qvPrice">—</div>
+          <span class="qv-pfx-sym">₹</span>
+          <input type="number" class="qv-edit-input" id="qvPrice" title="Click to edit price" step="0.01" min="0" />
+        </div>
+        <div class="qv-card c-size">
+          <div class="qv-card-lbl">Size</div>
+          <input type="text" class="qv-edit-input" id="qvSize" title="Click to edit size" placeholder="—" />
         </div>
         <div class="qv-card c-qty">
           <div class="qv-card-lbl">Stock Quantity</div>
@@ -900,25 +859,21 @@
         </div>
       </div>
 
-      <!-- Total stock value -->
       <div class="qv-value-strip">
         <span class="qv-card-lbl">💰 Total Stock Value</span>
         <span class="qvv" id="qvTotalVal">—</span>
       </div>
 
-      <!-- Status -->
       <div class="qv-status-row">
         <span class="qv-status-lbl">Stock Status</span>
         <span id="qvStatus">—</span>
       </div>
 
-      <!-- Hint -->
-      <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close &nbsp;·&nbsp; view only</div>
+      <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close &nbsp;·&nbsp; edits autosave</div>
     </div>
   </div>
 </div>
 
-<!-- ══ Delete Confirm Modal ══════════════════════════════════ -->
 <div class="overlay" id="delModal">
   <div class="modal">
     <h3>🗑️ Delete Product</h3>
@@ -930,13 +885,9 @@
   </div>
 </div>
 
-<!-- ══ Toast ══════════════════════════════════════════════════ -->
 <div id="toast"><div class="tdot"></div><span id="toastMsg"></span></div>
 
 
-<!-- ══════════════════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
@@ -957,17 +908,19 @@
 const GOOGLE_CLIENT_ID = '183445643227-np500mtqtb4l2ut2aqdlkg4nshvuihla.apps.googleusercontent.com';   // ← paste your Client ID here
 
 /* ─── App State ──────────────────────────────────────────── */
+const AUTH_CACHE_KEY = 'ims_v3_drive_auth';
 let inventory   = [];
 let searchQ     = '';
 let pendingDelId= null;
+let currentQvId = null;
 let gToken      = null;
 let tokenClient = null;
-let imgMode     = 'drive';
-let currentImg  = null;  // { type:'drive'|'local', value:fileId|path, label:string }
+let currentImg  = null;
 let pendingAuthCbs = [];
 let imsFolderId = null;
 let inventoryFileId = null;
 let syncTimer = null;
+const blobCache = {}; // Cache for Drive image object URLs
 const IMS_FOLDER_NAME = 'IMS';
 const IMS_INVENTORY_FILE = 'inventory.json';
 
@@ -980,7 +933,6 @@ window.addEventListener('load', async () => {
 
   if (!hasCid) {
     document.getElementById('setupBanner').style.display = 'flex';
-    setMode('local');          // fall back to local path when no Drive config
     document.getElementById('driveBtn').style.display = 'none';
     setSyncStatus('offline', 'Local only');
   } else {
@@ -991,8 +943,11 @@ window.addEventListener('load', async () => {
   updateStats();
 
   if (hasCid && navigator.onLine) {
-    queueAfterAuth(() => syncFromDriveOnStartup());
-    if (ensureTokenClient()) tokenClient.requestAccessToken({ prompt: '' });
+    const hasAuth = localStorage.getItem(AUTH_CACHE_KEY) === 'true';
+    if (hasAuth && ensureTokenClient()) {
+      queueAfterAuth(() => syncFromDriveOnStartup());
+      tokenClient.requestAccessToken({ prompt: '' }); // Silent re-auth
+    }
   }
 });
 
@@ -1003,7 +958,7 @@ function ensureTokenClient() {
   if (tokenClient) return true;
   if (!GOOGLE_CLIENT_ID.trim()) return false;
   if (!window.google?.accounts?.oauth2) {
-    toast('Google Identity Services not loaded. Check your internet connection.', 'err');
+    toast('Google Identity Services not loaded. Check connection.', 'err');
     return false;
   }
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -1016,16 +971,21 @@ function ensureTokenClient() {
 
 function onToken(resp) {
   if (resp.error) {
+    localStorage.removeItem(AUTH_CACHE_KEY);
     if (!['access_denied', 'consent_required', 'interaction_required', 'popup_closed_by_user'].includes(resp.error)) {
       toast('Google auth error: ' + resp.error, 'err');
     }
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     return;
   }
+  localStorage.setItem(AUTH_CACHE_KEY, 'true');
   gToken = resp.access_token;
   updateDriveBtn();
   const cbs = pendingAuthCbs.splice(0);
   cbs.forEach(cb => Promise.resolve(cb()).catch(() => {}));
+  
+  // Refresh standard UI images via API now that token exists
+  render(); 
 }
 
 function updateDriveBtn() {
@@ -1045,13 +1005,59 @@ function handleDriveClick() {
   if (gToken) {
     try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
     gToken = null;
+    localStorage.removeItem(AUTH_CACHE_KEY);
     updateDriveBtn();
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     toast('Disconnected from Google Drive.', 'info');
   } else {
     if (!ensureTokenClient()) return;
     queueAfterAuth(() => syncFromDriveOnStartup(true));
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken({ prompt: 'consent' }); // Interactive mode
+  }
+}
+
+/* ─── Fetching Drive Images Securely for Safari ──────────── */
+async function loadDriveImage(fileId, imgId, phId) {
+  const img = document.getElementById(imgId);
+  const ph = document.getElementById(phId);
+  if (!img) return;
+
+  // Serve from blob cache if already fetched
+  if (blobCache[fileId]) {
+    img.src = blobCache[fileId];
+    img.style.display = 'block';
+    if(ph) ph.style.display = 'none';
+    return;
+  }
+
+  // Fetch as blob using the authenticated token
+  if (gToken) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${gToken}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        blobCache[fileId] = url;
+        img.src = url;
+        img.style.display = 'block';
+        if(ph) ph.style.display = 'none';
+        return;
+      }
+    } catch(e) { console.error('Drive API image fetch failed', e); }
+  }
+
+  // Safe fallback to thumbnail via CORS-safe no-referrer approach
+  img.referrerPolicy = "no-referrer";
+  img.src = `https://drive.google.com/thumbnail?id=${fileId}`;
+  img.onload = () => {
+    img.style.display = 'block';
+    if(ph) ph.style.display = 'none';
+  };
+  img.onerror = () => {
+    img.style.display = 'none';
+    if(ph) ph.style.display = '';
   }
 }
 
@@ -1067,7 +1073,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   if (!gToken) {
     queueAfterAuth(() => doUpload(file));
     if (!ensureTokenClient()) return;
-    tokenClient.requestAccessToken({ prompt: '' });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   } else {
     await doUpload(file);
   }
@@ -1078,23 +1084,20 @@ async function doUpload(file) {
 
   try {
     const fileId = await uploadToDrive(file);
-    const thumbUrl = driveThumb(fileId);
-
     currentImg = { type: 'drive', value: fileId, label: file.name };
-    showPreview(thumbUrl, file.name, 'Saved to your Google Drive ✓');
+    showPreview(`https://drive.google.com/thumbnail?id=${fileId}`, file.name, 'Saved to your Google Drive ✓');
     setDZ('done', '✅', file.name.length > 28 ? file.name.slice(0,28)+'…' : file.name, 'Click to replace image');
     toast('Image uploaded to Google Drive!', 'ok');
   } catch(err) {
     resetDZ();
     toast('Upload failed: ' + err.message, 'err');
-    if (/401|unauthorized/i.test(err.message)) { gToken = null; updateDriveBtn(); }
+    if (/401|unauthorized/i.test(err.message)) { gToken = null; localStorage.removeItem(AUTH_CACHE_KEY); updateDriveBtn(); }
   }
 }
 
 async function uploadToDrive(file) {
   const folderId = await ensureIMSFolder();
 
-  /* 1. Upload file */
   const meta = { name: file.name, mimeType: file.type, parents: [folderId] };
   const body = new FormData();
   body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
@@ -1110,7 +1113,6 @@ async function uploadToDrive(file) {
   }
   const { id } = await upRes.json();
 
-  /* 2. Make publicly readable so thumbnail loads without auth */
   const pmRes = await fetch(
     `https://www.googleapis.com/drive/v3/files/${id}/permissions`,
     {
@@ -1126,10 +1128,7 @@ async function uploadToDrive(file) {
   return id;
 }
 
-function queueAfterAuth(cb) {
-  pendingAuthCbs.push(cb);
-}
-
+function queueAfterAuth(cb) { pendingAuthCbs.push(cb); }
 function setSyncStatus(state, text) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
@@ -1154,9 +1153,7 @@ async function driveJson(url, opts = {}) {
   return res.json();
 }
 
-function qName(name) {
-  return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
+function qName(name) { return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
 async function ensureIMSFolder() {
   if (imsFolderId) return imsFolderId;
@@ -1251,16 +1248,6 @@ async function syncFromDriveOnStartup(showToast = false) {
   }
 }
 
-/* Thumbnail URL for publicly-shared Drive file */
-function driveThumb(fileId, sz = 400) {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${sz}-h${sz}`;
-}
-
-/* Fallback view URL */
-function driveView(fileId) {
-  return `https://drive.google.com/uc?export=view&id=${fileId}`;
-}
-
 /* ─── DZ helpers ─────────────────────────────────────────── */
 function setDZ(cls, icon, text, sub) {
   const dz = document.getElementById('dropZone');
@@ -1274,37 +1261,10 @@ function resetDZ() {
   setDZ('', '☁️', 'Click to choose & upload to Drive', 'JPG · PNG · GIF — saved to your Google Drive');
 }
 
-/* ═══════════════════════════════════════════════════════════
-   IMAGE MODE
-═══════════════════════════════════════════════════════════ */
-function setMode(m) {
-  imgMode = m;
-  document.getElementById('modeDrive').classList.toggle('active', m === 'drive');
-  document.getElementById('modeLocal').classList.toggle('active', m === 'local');
-  document.getElementById('drivePanel').style.display = m === 'drive' ? '' : 'none';
-  document.getElementById('localPanel').style.display = m === 'local' ? '' : 'none';
-  clearImg();
-}
-
-/* ─── Local path preview ─────────────────────────────────── */
-document.getElementById('localInput').addEventListener('input', debounce(() => {
-  const p = document.getElementById('localInput').value.trim();
-  if (!p) { clearImg(); return; }
-  currentImg = { type: 'local', value: p, label: p.split(/[/\\]/).pop() };
-  showPreview(pathToURL(p), currentImg.label, 'From local drive');
-}, 420));
-
-function pathToURL(p) {
-  if (p.startsWith('file://')) return p;
-  if (/^[A-Za-z]:[/\\]/.test(p)) return 'file:///' + p.replace(/\\/g, '/');
-  if (p.startsWith('/')) return 'file://' + p;
-  return p;
-}
-
-/* ─── Shared preview strip ───────────────────────────────── */
 function showPreview(url, label, sub) {
   const strip = document.getElementById('previewStrip');
   const img   = document.getElementById('previewImg');
+  img.referrerPolicy = "no-referrer";
   img.src = url;
   img.onload  = () => {
     strip.classList.add('visible');
@@ -1314,7 +1274,7 @@ function showPreview(url, label, sub) {
   img.onerror = () => {
     strip.classList.remove('visible');
     currentImg = null;
-    if (imgMode === 'drive') resetDZ();
+    resetDZ();
   };
 }
 
@@ -1322,7 +1282,6 @@ function clearImg() {
   currentImg = null;
   document.getElementById('previewStrip').classList.remove('visible');
   document.getElementById('previewImg').src = '';
-  document.getElementById('localInput').value = '';
   resetDZ();
 }
 
@@ -1334,6 +1293,7 @@ document.getElementById('addForm').addEventListener('submit', e => {
 
   const name  = document.getElementById('iName').value.trim();
   const sku   = document.getElementById('iSKU').value.trim().toUpperCase();
+  const size  = document.getElementById('iSize').value.trim();
   const price = parseFloat(document.getElementById('iPrice').value);
   const qty   = parseInt(document.getElementById('iQty').value, 10);
 
@@ -1345,7 +1305,7 @@ document.getElementById('addForm').addEventListener('submit', e => {
 
   const item = {
     id:    Date.now(),
-    name, sku, price, qty,
+    name, sku, size, price, qty,
     img:   currentImg || null,
     added: new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
   };
@@ -1377,8 +1337,10 @@ function adjQty(id, d) {
   if (next < 0) return toast('Quantity cannot go below 0.', 'err');
   item.qty = next;
   persist(); render(); updateStats();
-  if (next === 0)    toast(`🚫 "${item.name}" is out of stock!`, 'warn');
-  else if (next < 5) toast(`⚠️ "${item.name}" — only ${next} left!`, 'warn');
+  if (next === 0)     toast(`🚫 "${item.name}" is out of stock!`, 'warn');
+  else if (next < 10) toast(`⚠️ "${item.name}" — only ${next} left!`, 'warn');
+  
+  if(currentQvId === id) updateQvTotal(item);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1407,38 +1369,40 @@ function closeDelModal() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   QUICK VIEW
+   QUICK VIEW & EDITING
 ═══════════════════════════════════════════════════════════ */
 function openQV(id) {
   const item = inventory.find(i => i.id === id);
   if (!item) return;
+  currentQvId = id;
 
   /* ── image ── */
   const img = document.getElementById('qvImg');
   const ph  = document.getElementById('qvPh');
 
   if (item.img?.type === 'drive') {
-    img.src      = driveThumb(item.img.value, 800);
-    img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
-    img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
-    img.style.display = 'none'; ph.style.display = '';
-  } else if (item.img?.type === 'local') {
-    img.src      = pathToURL(item.img.value);
-    img.onerror  = () => { img.style.display = 'none'; ph.style.display = ''; };
-    img.onload   = () => { img.style.display = 'block'; ph.style.display = 'none'; };
-    img.style.display = 'none'; ph.style.display = '';
+    loadDriveImage(item.img.value, 'qvImg', 'qvPh');
   } else {
     img.style.display = 'none';
     ph.style.display  = '';
   }
 
-  /* ── text fields ── */
-  const low = item.qty < 5;
+  /* ── editable text fields ── */
+  document.getElementById('qvName').value     = item.name;
+  document.getElementById('qvSku').value      = item.sku;
+  document.getElementById('qvSize').value     = item.size || '';
+  document.getElementById('qvPrice').value    = item.price;
+  document.getElementById('qvAdded').textContent = item.added;
+  
+  updateQvTotal(item);
 
-  document.getElementById('qvName').textContent     = item.name;
-  document.getElementById('qvAdded').textContent    = item.added;
-  document.getElementById('qvSku').textContent      = item.sku;
-  document.getElementById('qvPrice').textContent    = '₹' + fmt(item.price);
+  /* ── open ── */
+  document.getElementById('qvOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function updateQvTotal(item) {
+  const low = item.qty < 10;
   document.getElementById('qvTotalVal').textContent = '₹' + fmt(item.price * item.qty);
 
   const qtyEl = document.getElementById('qvQtyVal');
@@ -1450,22 +1414,58 @@ function openQV(id) {
     : low
       ? `<span class="badge b-low">⚠️ Low Stock</span>`
       : `<span class="badge b-ok">✔ In Stock</span>`;
-
-  /* ── open ── */
-  document.getElementById('qvOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
 }
+
+function handleQvEdit(field, val) {
+  const item = inventory.find(i => i.id === currentQvId);
+  if (!item) return;
+  if (field === 'price') val = parseFloat(val) || 0;
+  item[field] = val;
+  persist(); render(); updateStats();
+  if (field === 'price' || field === 'qty') updateQvTotal(item);
+}
+
+// Inline edit listeners
+document.getElementById('qvName').addEventListener('change', e => handleQvEdit('name', e.target.value.trim()));
+document.getElementById('qvSku').addEventListener('change', e => handleQvEdit('sku', e.target.value.trim().toUpperCase()));
+document.getElementById('qvSize').addEventListener('change', e => handleQvEdit('size', e.target.value.trim()));
+document.getElementById('qvPrice').addEventListener('change', e => handleQvEdit('price', e.target.value));
+
+// Quick View Image Replacement
+document.getElementById('qvImgInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!gToken) { return toast('Please connect Google Drive to change images.', 'err'); }
+  
+  const item = inventory.find(i => i.id === currentQvId);
+  if (!item) return;
+
+  const ph = document.getElementById('qvPh');
+  document.getElementById('qvImg').style.display = 'none';
+  ph.innerHTML = '<span class="spinner"></span>';
+  ph.style.display = '';
+
+  try {
+    const fileId = await uploadToDrive(file);
+    item.img = { type: 'drive', value: fileId, label: file.name };
+    persist(); render(); updateStats();
+    loadDriveImage(fileId, 'qvImg', 'qvPh');
+    toast('Image updated successfully!', 'ok');
+  } catch(err) {
+    toast('Failed to replace image.', 'err');
+    ph.innerHTML = '📦';
+  }
+});
 
 function closeQV() {
   document.getElementById('qvOverlay').classList.remove('open');
   document.body.style.overflow = '';
+  currentQvId = null;
 }
 
-function handleQvBg(e) {
-  if (e.target === document.getElementById('qvOverlay')) closeQV();
-}
+function handleQvBg(e) { if (e.target === document.getElementById('qvOverlay')) closeQV(); }
 
-/* Escape closes whichever modal is open */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.getElementById('qvOverlay').classList.contains('open'))  closeQV();
@@ -1478,7 +1478,9 @@ document.addEventListener('keydown', e => {
 function render() {
   const q    = searchQ;
   const list = inventory.filter(i =>
-    i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q)
+    i.name.toLowerCase().includes(q) || 
+    i.sku.toLowerCase().includes(q) ||
+    (i.size && i.size.toLowerCase().includes(q))
   );
 
   document.getElementById('cntBadge').textContent = `${list.length} item${list.length !== 1 ? 's' : ''}`;
@@ -1492,35 +1494,19 @@ function render() {
       ? 'Your inventory is empty' : 'No results found';
     document.getElementById('emptyP').textContent = inventory.length === 0
       ? 'Add your first product using the form on the left.'
-      : `No match for "${document.getElementById('searchInput').value}". Try a different name or SKU.`;
+      : `No match for "${document.getElementById('searchInput').value}".`;
     return;
   }
 
   emp.style.display = 'none'; tbl.style.display = '';
 
   document.getElementById('tBody').innerHTML = list.map(item => {
-    const low = item.qty < 5;
-
-    /* thumbnail */
-    let thumb;
-    if (item.img?.type === 'drive') {
-      const url = driveThumb(item.img.value);
-      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}"
-                 onerror="this.src='${esc(driveView(item.img.value))}';this.onerror=()=>{this.parentElement.innerHTML='📦';}" /></div>`;
-    } else if (item.img?.type === 'local') {
-      const url = pathToURL(item.img.value);
-      thumb = `<div class="thumb"><img src="${esc(url)}" alt="${esc(item.name)}"
-                 onerror="this.parentElement.innerHTML='📦'" /></div>`;
-    } else {
-      thumb = `<div class="thumb">📦</div>`;
-    }
-
-    /* status badge */
-    const badge = item.qty === 0
-      ? `<span class="badge b-out">🚫 Out of Stock</span>`
-      : low
-        ? `<span class="badge b-low">⚠️ Low Stock</span>`
-        : `<span class="badge b-ok">✔ In Stock</span>`;
+    const low = item.qty < 10;
+    
+    const thumb = `<div class="thumb">
+       <img id="tImg-${item.id}" alt="${esc(item.name)}" style="display:none;" />
+       <div id="tPh-${item.id}">📦</div>
+    </div>`;
 
     return `
       <tr class="clickable ${low ? 'row-low' : ''}" data-id="${item.id}" onclick="openQV(${item.id})" title="Click to quick-view">
@@ -1530,6 +1516,7 @@ function render() {
           <div class="prod-date">Added ${esc(item.added)}</div>
         </td>
         <td><span class="sku-badge">${esc(item.sku)}</span></td>
+        <td>${esc(item.size || '—')}</td>
         <td class="price-val">₹${fmt(item.price)}</td>
         <td onclick="event.stopPropagation()">
           <div class="qty-ctrl">
@@ -1539,12 +1526,18 @@ function render() {
             <button class="qty-btn plus" onclick="adjQty(${item.id},1)" title="Increase">+</button>
           </div>
         </td>
-        <td>${badge}</td>
         <td onclick="event.stopPropagation()">
           <button class="btn-del" onclick="reqDel(${item.id})">🗑 Delete</button>
         </td>
       </tr>`;
   }).join('');
+  
+  // Post-render: async trigger image loads safely 
+  list.forEach(item => {
+    if (item.img && item.img.type === 'drive') {
+      loadDriveImage(item.img.value, `tImg-${item.id}`, `tPh-${item.id}`);
+    }
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1553,7 +1546,7 @@ function render() {
 function updateStats() {
   const total = inventory.length;
   const value = inventory.reduce((s, i) => s + i.price * i.qty, 0);
-  const low   = inventory.filter(i => i.qty < 5).length;
+  const low   = inventory.filter(i => i.qty < 10).length;
   const units = inventory.reduce((s, i) => s + i.qty, 0);
   document.getElementById('st-total').textContent = total;
   document.getElementById('st-value').textContent = '₹' + fmt(value);
