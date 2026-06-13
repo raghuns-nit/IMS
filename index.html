@@ -44,7 +44,7 @@
       --radius-sm:    9px;
       --radius-xs:    6px;
       --shadow:       0 4px 20px rgba(100,116,139,.13);
-      --shadow-sm:    0 2px 8px  rgba(100,116,139,.08);
+      --shadow-sm: 0 2px 8px rgba(100, 116, 139, .08);
       --shadow-lg:    0 10px 44px rgba(100,116,139,.2);
     }
 
@@ -666,6 +666,16 @@
     }
     .qv-status-lbl { font-size: .72rem; font-weight: 600; color: var(--muted); }
 
+    /* History Timeline container */
+    .h-log { display: flex; justify-content: space-between; align-items: flex-start; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+    .h-log:last-child { border-bottom: none; }
+    .h-meta { display: flex; flex-direction: column; gap: 2px; width: 70%; }
+    .h-comm { color: var(--text); font-weight: 600; }
+    .h-time { color: var(--muted); font-size: 0.68rem; }
+    .h-badge { font-family: monospace; font-weight: 800; font-size: 0.8rem; border-radius: 4px; padding: 1px 5px; text-align: right; }
+    .h-add { color: var(--green); background: var(--green-light); }
+    .h-sub { color: var(--red); background: var(--red-light); }
+
     /* Divider + hint */
     .qv-hint {
       text-align: center; font-size: .68rem; color: var(--muted2);
@@ -921,6 +931,14 @@
         <span id="qvStatus">—</span>
       </div>
       
+      <!-- Stock Timeline Log -->
+      <div style="margin-top: 18px;">
+        <span class="qv-status-lbl" style="display:block; margin-bottom:8px; text-transform:uppercase; font-size:0.65rem; letter-spacing:1px;">📈 Stock Movement History</span>
+        <div id="qvHistoryContainer" style="max-height: 120px; overflow-y: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px;">
+          <!-- Dynamic entries -->
+        </div>
+      </div>
+      
       <!-- Save Changes Button -->
       <button id="qvSaveBtn" class="btn-add" style="width:100%; margin-top:16px; display:none;">💾 Save Changes</button>
 
@@ -997,7 +1015,6 @@ window.addEventListener('load', async () => {
     document.getElementById('driveBtn').style.display = 'none';
     setSyncStatus('offline', 'Local only');
   } else {
-    // If the user previously connected, prompt them to click the button to resume.
     const hasAuth = localStorage.getItem(AUTH_CACHE_KEY) === 'true';
     setSyncStatus('offline', hasAuth ? 'Click "Connect Drive" to resume' : 'Connect Drive to sync');
   }
@@ -1040,11 +1057,7 @@ function onToken(resp) {
   
   const cbs = pendingAuthCbs.splice(0);
   cbs.forEach(cb => Promise.resolve(cb()).catch(() => {}));
-  
-  // Refresh standard UI images via API now that token exists
   render(); 
-  
-  // Automatically sync inventory upon successful connection
   syncFromDriveOnStartup(true);
 }
 
@@ -1064,7 +1077,6 @@ function handleDriveClick() {
   if (!GOOGLE_CLIENT_ID.trim()) { toast('Set GOOGLE_CLIENT_ID in the source first.', 'err'); return; }
   
   if (gToken) {
-    // Disconnect logic
     try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
     gToken = null;
     localStorage.removeItem(AUTH_CACHE_KEY);
@@ -1072,9 +1084,7 @@ function handleDriveClick() {
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     toast('Disconnected from Google Drive.', 'info');
   } else {
-    // Connect logic
     if (!ensureTokenClient()) return;
-    // By omitting `prompt: 'consent'`, Google asks only once and auto-resolves on future clicks
     tokenClient.requestAccessToken(); 
   }
 }
@@ -1085,7 +1095,6 @@ async function loadDriveImage(fileId, imgId, phId) {
   const ph = document.getElementById(phId);
   if (!img) return;
 
-  // Serve from blob cache if already fetched
   if (blobCache[fileId]) {
     img.src = blobCache[fileId];
     img.style.display = 'block';
@@ -1093,7 +1102,6 @@ async function loadDriveImage(fileId, imgId, phId) {
     return;
   }
 
-  // Fetch as blob using the authenticated token
   if (gToken) {
     try {
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
@@ -1111,7 +1119,6 @@ async function loadDriveImage(fileId, imgId, phId) {
     } catch(e) { console.error('Drive API image fetch failed', e); }
   }
 
-  // Safe fallback to thumbnail via CORS-safe no-referrer approach
   img.referrerPolicy = "no-referrer";
   img.src = `https://drive.google.com/thumbnail?id=${fileId}`;
   img.onload = () => {
@@ -1366,11 +1373,22 @@ document.getElementById('addForm').addEventListener('submit', e => {
   if (isNaN(qty)   || qty   < 0) return toast('Enter a valid stock quantity (≥ 0).', 'err');
   if (inventory.some(i => i.sku === sku)) return toast(`SKU "${sku}" already exists.`, 'err');
 
+  const nowString = new Date().toLocaleString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+
   const item = {
     id:    Date.now(),
     name, sku, size, price, qty,
     img:   currentImg || null,
-    added: new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+    added: new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
+    history: [{
+      timestamp: nowString,
+      change: qty,
+      newQty: qty,
+      comment: "Initial stock addition"
+    }]
   };
 
   inventory.push(item);
@@ -1394,7 +1412,6 @@ searchInput.addEventListener('input', () => {
   render();
 });
 
-// Clear Search via 'X' Button
 searchClear.addEventListener('click', () => {
   searchInput.value = '';
   searchQ = '';
@@ -1402,7 +1419,6 @@ searchClear.addEventListener('click', () => {
   render();
 });
 
-// Clear Search via 'Escape'
 searchInput.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     searchInput.value = '';
@@ -1414,19 +1430,48 @@ searchInput.addEventListener('keydown', e => {
 });
 
 /* ═══════════════════════════════════════════════════════════
-   STOCK ADJUSTMENT
+   STOCK ADJUSTMENT + HISTORY CAPTURE
 ═══════════════════════════════════════════════════════════ */
 function adjQty(id, d) {
   const item = inventory.find(i => i.id === id);
   if (!item) return;
   const next = item.qty + d;
   if (next < 0) return toast('Quantity cannot go below 0.', 'err');
+
+  let comment = '';
+  if (d < 0) {
+    // Stock reduction requires a mandatory/optional comment capture
+    const reason = prompt(`Reason for reducing stock of "${item.name}":`, "Stock dispatched / Sold");
+    if (reason === null) return; // Abort structural mutation if user clicks cancel
+    comment = reason.trim() || "Stock adjustment reduction";
+  } else {
+    comment = "Stock replenishment addition";
+  }
+
   item.qty = next;
+
+  // Track event history logs
+  if (!item.history) item.history = [];
+  const timestamp = new Date().toLocaleString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+  });
+
+  item.history.unshift({
+    timestamp,
+    change: d,
+    newQty: next,
+    comment
+  });
+
   persist(); render(); updateStats();
   if (next === 0)     toast(`🚫 "${item.name}" is out of stock!`, 'warn');
   else if (next < 10) toast(`⚠️ "${item.name}" — only ${next} left!`, 'warn');
   
-  if(currentQvId === id) updateQvTotal(item);
+  if(currentQvId === id) {
+    updateQvTotal(item);
+    renderQvHistory(item);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1484,6 +1529,7 @@ function openQV(id) {
   document.getElementById('qvSaveBtn').style.display = 'none';
   
   updateQvTotal(item);
+  renderQvHistory(item);
 
   /* ── open ── */
   document.getElementById('qvOverlay').classList.add('open');
@@ -1492,7 +1538,6 @@ function openQV(id) {
 
 function updateQvTotal(item) {
   const low = item.qty < 10;
-  // Calculate potential new total if input changed but not saved
   const livePrice = parseFloat(document.getElementById('qvPrice').value) || 0;
   
   document.getElementById('qvTotalVal').textContent = '₹' + fmt(livePrice * item.qty);
@@ -1508,12 +1553,36 @@ function updateQvTotal(item) {
       : `<span class="badge b-ok">✔ In Stock</span>`;
 }
 
+function renderQvHistory(item) {
+  const container = document.getElementById('qvHistoryContainer');
+  const logs = item.history || [];
+  
+  if (logs.length === 0) {
+    container.innerHTML = `<div style="color:var(--muted); text-align:center; padding: 8px 0;">No logs documented yet.</div>`;
+    return;
+  }
+  
+  container.innerHTML = logs.map(log => {
+    const isAdd = log.change >= 0;
+    const badgeClass = isAdd ? 'h-add' : 'h-sub';
+    const prefix = isAdd ? '+' : '';
+    return `
+      <div class="h-log">
+        <div class="h-meta">
+          <span class="h-comm">${esc(log.comment)}</span>
+          <span class="h-time">${esc(log.timestamp)}</span>
+        </div>
+        <span class="h-badge ${badgeClass}">${prefix}${log.change} <span style="font-size:0.65rem; font-weight:normal; color:var(--text2);">(${log.newQty})</span></span>
+      </div>
+    `;
+  }).join('');
+}
+
 // Show the "Save" button whenever a field is edited
 ['qvName', 'qvSku', 'qvSize', 'qvPrice'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {
     document.getElementById('qvSaveBtn').style.display = 'flex';
     
-    // Update live total preview if price is being tweaked
     if (id === 'qvPrice' && currentQvId) {
       const item = inventory.find(i => i.id === currentQvId);
       if (item) updateQvTotal(item);
@@ -1537,9 +1606,6 @@ document.getElementById('qvSaveBtn').addEventListener('click', () => {
   
   document.getElementById('qvSaveBtn').style.display = 'none';
   toast('Changes saved successfully!', 'ok');
-  
-  // optionally close the modal if preferred: 
-  // closeQV(); 
 });
 
 // Quick View Image Replacement
@@ -1643,7 +1709,6 @@ function render() {
       </tr>`;
   }).join('');
   
-  // Post-render: async trigger image loads safely 
   list.forEach(item => {
     if (item.img && item.img.type === 'drive') {
       loadDriveImage(item.img.value, `tImg-${item.id}`, `tPh-${item.id}`);
