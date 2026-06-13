@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SimpLx — Inventory Management</title>
 
+  <!-- Google Identity Services (for Drive OAuth) -->
   <script src="https://accounts.google.com/gsi/client" async></script>
 
   <style>
@@ -182,6 +182,16 @@
     .sc-d::before { background: linear-gradient(90deg,#d97706,#f59e0b); }
 
     .sc-icon { font-size: 1.5rem; display: block; margin-bottom: 8px; opacity: .85; }
+    
+    /* INR Icon Override */
+    .inr-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--text); color: var(--surface);
+      border-radius: 50%; line-height: 1; font-weight: 800;
+    }
+    .sc-b .inr-icon { width: 34px; height: 34px; font-size: 1.15rem !important; margin-bottom: 10px; }
+    .qv-inr-icon { width: 18px; height: 18px; font-size: .75rem !important; margin-right: 5px; margin-top: -2px;}
+
     .sc-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
     .sc-num   { font-size: 1.9rem; font-weight: 900; margin-top: 5px; line-height: 1; }
     .sc-a .sc-num { color: var(--accent); }
@@ -310,7 +320,7 @@
     }
     .pfx-wrap input { padding-left: 26px !important; }
 
-    /* Add button */
+    /* Buttons */
     .btn-add {
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       color: #fff; border: none;
@@ -333,11 +343,20 @@
       display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
     }
     .srch-wrap  { flex: 1; min-width: 150px; position: relative; }
-    .srch-wrap input { padding-left: 36px !important; font-size: .85rem !important; }
+    .srch-wrap input { padding-left: 36px !important; padding-right: 30px !important; font-size: .85rem !important; }
     .srch-icon  {
       position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
       color: var(--muted2); font-size: .9rem; pointer-events: none;
     }
+    .srch-clear {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      background: var(--surface3); border: none; color: var(--muted);
+      border-radius: 50%; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .7rem; transition: all 0.15s;
+    }
+    .srch-clear:hover { background: var(--red-light); color: var(--red); }
+    
     .cnt-badge {
       font-size: .71rem; font-weight: 700; color: var(--muted);
       background: var(--surface3); border: 1px solid var(--border);
@@ -616,6 +635,7 @@
     .qv-card-lbl {
       font-size: .63rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;
+      display: flex; align-items: center;
     }
     .qv-card-val {
       font-size: 1.18rem; font-weight: 900; color: var(--text); line-height: 1;
@@ -672,6 +692,9 @@
 </head>
 <body>
 
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════ -->
 <header>
   <div class="logo-box">📦</div>
   <div class="hdr-title">
@@ -687,8 +710,12 @@
   </div>
 </header>
 
+<!-- ══════════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════════ -->
 <div class="wrap">
 
+  <!-- Google Drive Setup Banner -->
   <div class="setup-banner" id="setupBanner" style="display:none">
     <span class="sb-icon">⚙️</span>
     <div style="flex:1">
@@ -704,6 +731,7 @@
     <button class="sb-close" onclick="this.closest('.setup-banner').style.display='none'">✕</button>
   </div>
 
+  <!-- Stats -->
   <div class="stats">
     <div class="stat-card sc-a">
       <span class="sc-icon">🏷️</span>
@@ -711,7 +739,7 @@
       <div class="sc-num" id="st-total">0</div>
     </div>
     <div class="stat-card sc-b">
-      <span class="sc-icon">💰</span>
+      <span class="sc-icon inr-icon">₹</span>
       <div class="sc-label">Total Stock Value</div>
       <div class="sc-num" id="st-value">₹0</div>
     </div>
@@ -729,10 +757,14 @@
 
   <div class="layout">
 
+    <!-- ┌─────────────────────────────────────┐
+         │       ADD PRODUCT FORM              │
+         └─────────────────────────────────────┘ -->
     <div class="panel">
       <div class="panel-head">➕ Add New Product</div>
       <form id="addForm" class="add-form" novalidate autocomplete="off">
 
+        <!-- Image -->
         <div class="fg">
           <label>Item Picture (Google Drive)</label>
           <div id="drivePanel">
@@ -743,6 +775,7 @@
               <div class="dz-sub"  id="dzSub">JPG · PNG · GIF — saved to your Google Drive</div>
             </div>
           </div>
+          <!-- Preview strip -->
           <div class="preview-strip" id="previewStrip">
             <img id="previewImg" alt="preview" />
             <div class="preview-info">
@@ -753,6 +786,7 @@
           </div>
         </div>
 
+        <!-- Name & SKU -->
         <div class="fg">
           <label for="iName">Item Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="iName" placeholder="e.g. Parking Tiles 1'x1'" maxlength="80" />
@@ -762,11 +796,13 @@
           <input type="text" id="iSKU" placeholder="e.g. WKB-001-BLK" maxlength="50" />
         </div>
         
+        <!-- Size -->
         <div class="fg">
           <label for="iSize">Size / Dimensions</label>
           <input type="text" id="iSize" placeholder="e.g. 1'x1' or 500ml" maxlength="50" />
         </div>
 
+        <!-- Price + Qty -->
         <div class="two-col">
           <div class="fg">
             <label for="iPrice">Price (₹) <span style="color:var(--red)">*</span></label>
@@ -785,17 +821,23 @@
       </form>
     </div>
 
+    <!-- ┌─────────────────────────────────────┐
+         │       INVENTORY TABLE               │
+         └─────────────────────────────────────┘ -->
     <div class="panel" style="min-height:420px">
       <div class="panel-head">📋 Inventory List</div>
 
+      <!-- Search toolbar -->
       <div class="toolbar">
         <div class="srch-wrap">
           <span class="srch-icon">🔍</span>
           <input type="text" id="searchInput" placeholder="Search by name, SKU, or size…" />
+          <button class="srch-clear" id="searchClear" style="display:none;" title="Clear search">✕</button>
         </div>
         <span class="cnt-badge" id="cntBadge">0 items</span>
       </div>
 
+      <!-- Data table -->
       <div class="tbl-wrap">
         <table id="invTable" style="display:none">
           <thead>
@@ -820,11 +862,16 @@
       </div>
     </div>
 
-  </div></div><div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
+  </div><!-- /layout -->
+</div><!-- /wrap -->
+
+<!-- ══ Quick View Modal ══════════════════════════════════════ -->
+<div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
   <div class="qv-panel" id="qvPanel">
 
     <button class="qv-close" onclick="closeQV()" title="Close (Esc)">✕</button>
 
+    <!-- Hero image -->
     <div class="qv-hero" id="qvHero">
       <img id="qvImg" alt="" style="display:none" />
       <div class="qv-ph" id="qvPh">📦</div>
@@ -832,17 +879,20 @@
       <input type="file" id="qvImgInput" style="display:none" accept="image/jpeg,image/jpg,image/png,image/gif" />
     </div>
 
+    <!-- Detail body -->
     <div class="qv-body">
       <input type="text" class="qv-edit-input" id="qvName" title="Click to edit name" />
       <div class="qv-meta">
         <span>🗓 <span id="qvAdded">—</span></span>
       </div>
 
+      <!-- SKU -->
       <div class="qv-sku-strip">
         <span class="qv-sku-lbl">Code</span>
         <input type="text" class="qv-edit-input" id="qvSku" title="Click to edit code" />
       </div>
 
+      <!-- Price, Size & Qty cards -->
       <div class="qv-grid">
         <div class="qv-card c-price">
           <div class="qv-card-lbl">Unit Price</div>
@@ -859,21 +909,28 @@
         </div>
       </div>
 
+      <!-- Total stock value -->
       <div class="qv-value-strip">
-        <span class="qv-card-lbl">💰 Total Stock Value</span>
+        <span class="qv-card-lbl"><span class="inr-icon qv-inr-icon">₹</span> Total Stock Value</span>
         <span class="qvv" id="qvTotalVal">—</span>
       </div>
 
+      <!-- Status -->
       <div class="qv-status-row">
         <span class="qv-status-lbl">Stock Status</span>
         <span id="qvStatus">—</span>
       </div>
+      
+      <!-- Save Changes Button -->
+      <button id="qvSaveBtn" class="btn-add" style="width:100%; margin-top:16px; display:none;">💾 Save Changes</button>
 
-      <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close &nbsp;·&nbsp; edits autosave</div>
+      <!-- Hint -->
+      <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close</div>
     </div>
   </div>
 </div>
 
+<!-- ══ Delete Confirm Modal ══════════════════════════════════ -->
 <div class="overlay" id="delModal">
   <div class="modal">
     <h3>🗑️ Delete Product</h3>
@@ -885,9 +942,13 @@
   </div>
 </div>
 
+<!-- ══ Toast ══════════════════════════════════════════════════ -->
 <div id="toast"><div class="tdot"></div><span id="toastMsg"></span></div>
 
 
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
@@ -936,19 +997,13 @@ window.addEventListener('load', async () => {
     document.getElementById('driveBtn').style.display = 'none';
     setSyncStatus('offline', 'Local only');
   } else {
-    setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
+    // If the user previously connected, prompt them to click the button to resume.
+    const hasAuth = localStorage.getItem(AUTH_CACHE_KEY) === 'true';
+    setSyncStatus('offline', hasAuth ? 'Click "Connect Drive" to resume' : 'Connect Drive to sync');
   }
 
   render();
   updateStats();
-
-  if (hasCid && navigator.onLine) {
-    const hasAuth = localStorage.getItem(AUTH_CACHE_KEY) === 'true';
-    if (hasAuth && ensureTokenClient()) {
-      queueAfterAuth(() => syncFromDriveOnStartup());
-      tokenClient.requestAccessToken({ prompt: '' }); // Silent re-auth
-    }
-  }
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -978,14 +1033,19 @@ function onToken(resp) {
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     return;
   }
+  
   localStorage.setItem(AUTH_CACHE_KEY, 'true');
   gToken = resp.access_token;
   updateDriveBtn();
+  
   const cbs = pendingAuthCbs.splice(0);
   cbs.forEach(cb => Promise.resolve(cb()).catch(() => {}));
   
   // Refresh standard UI images via API now that token exists
   render(); 
+  
+  // Automatically sync inventory upon successful connection
+  syncFromDriveOnStartup(true);
 }
 
 function updateDriveBtn() {
@@ -1002,7 +1062,9 @@ function updateDriveBtn() {
 
 function handleDriveClick() {
   if (!GOOGLE_CLIENT_ID.trim()) { toast('Set GOOGLE_CLIENT_ID in the source first.', 'err'); return; }
+  
   if (gToken) {
+    // Disconnect logic
     try { google.accounts.oauth2.revoke(gToken, () => {}); } catch(e) {}
     gToken = null;
     localStorage.removeItem(AUTH_CACHE_KEY);
@@ -1010,9 +1072,10 @@ function handleDriveClick() {
     setSyncStatus('offline', navigator.onLine ? 'Connect Drive to sync' : 'Offline (local cache)');
     toast('Disconnected from Google Drive.', 'info');
   } else {
+    // Connect logic
     if (!ensureTokenClient()) return;
-    queueAfterAuth(() => syncFromDriveOnStartup(true));
-    tokenClient.requestAccessToken({ prompt: 'consent' }); // Interactive mode
+    // By omitting `prompt: 'consent'`, Google asks only once and auto-resolves on future clicks
+    tokenClient.requestAccessToken(); 
   }
 }
 
@@ -1073,7 +1136,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   if (!gToken) {
     queueAfterAuth(() => doUpload(file));
     if (!ensureTokenClient()) return;
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken();
   } else {
     await doUpload(file);
   }
@@ -1322,9 +1385,32 @@ document.getElementById('addForm').addEventListener('submit', e => {
 /* ═══════════════════════════════════════════════════════════
    SEARCH
 ═══════════════════════════════════════════════════════════ */
-document.getElementById('searchInput').addEventListener('input', () => {
-  searchQ = document.getElementById('searchInput').value.trim().toLowerCase();
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+searchInput.addEventListener('input', () => {
+  searchQ = searchInput.value.trim().toLowerCase();
+  searchClear.style.display = searchQ ? 'block' : 'none';
   render();
+});
+
+// Clear Search via 'X' Button
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQ = '';
+  searchClear.style.display = 'none';
+  render();
+});
+
+// Clear Search via 'Escape'
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    searchInput.value = '';
+    searchQ = '';
+    searchClear.style.display = 'none';
+    searchInput.blur();
+    render();
+  }
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -1394,6 +1480,9 @@ function openQV(id) {
   document.getElementById('qvPrice').value    = item.price;
   document.getElementById('qvAdded').textContent = item.added;
   
+  // Hide Save button initially
+  document.getElementById('qvSaveBtn').style.display = 'none';
+  
   updateQvTotal(item);
 
   /* ── open ── */
@@ -1403,7 +1492,10 @@ function openQV(id) {
 
 function updateQvTotal(item) {
   const low = item.qty < 10;
-  document.getElementById('qvTotalVal').textContent = '₹' + fmt(item.price * item.qty);
+  // Calculate potential new total if input changed but not saved
+  const livePrice = parseFloat(document.getElementById('qvPrice').value) || 0;
+  
+  document.getElementById('qvTotalVal').textContent = '₹' + fmt(livePrice * item.qty);
 
   const qtyEl = document.getElementById('qvQtyVal');
   qtyEl.textContent = item.qty;
@@ -1416,20 +1508,39 @@ function updateQvTotal(item) {
       : `<span class="badge b-ok">✔ In Stock</span>`;
 }
 
-function handleQvEdit(field, val) {
+// Show the "Save" button whenever a field is edited
+['qvName', 'qvSku', 'qvSize', 'qvPrice'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    document.getElementById('qvSaveBtn').style.display = 'flex';
+    
+    // Update live total preview if price is being tweaked
+    if (id === 'qvPrice' && currentQvId) {
+      const item = inventory.find(i => i.id === currentQvId);
+      if (item) updateQvTotal(item);
+    }
+  });
+});
+
+// Explicit save action
+document.getElementById('qvSaveBtn').addEventListener('click', () => {
   const item = inventory.find(i => i.id === currentQvId);
   if (!item) return;
-  if (field === 'price') val = parseFloat(val) || 0;
-  item[field] = val;
-  persist(); render(); updateStats();
-  if (field === 'price' || field === 'qty') updateQvTotal(item);
-}
 
-// Inline edit listeners
-document.getElementById('qvName').addEventListener('change', e => handleQvEdit('name', e.target.value.trim()));
-document.getElementById('qvSku').addEventListener('change', e => handleQvEdit('sku', e.target.value.trim().toUpperCase()));
-document.getElementById('qvSize').addEventListener('change', e => handleQvEdit('size', e.target.value.trim()));
-document.getElementById('qvPrice').addEventListener('change', e => handleQvEdit('price', e.target.value));
+  item.name  = document.getElementById('qvName').value.trim();
+  item.sku   = document.getElementById('qvSku').value.trim().toUpperCase();
+  item.size  = document.getElementById('qvSize').value.trim();
+  item.price = parseFloat(document.getElementById('qvPrice').value) || 0;
+
+  persist();
+  render();
+  updateStats();
+  
+  document.getElementById('qvSaveBtn').style.display = 'none';
+  toast('Changes saved successfully!', 'ok');
+  
+  // optionally close the modal if preferred: 
+  // closeQV(); 
+});
 
 // Quick View Image Replacement
 document.getElementById('qvImgInput').addEventListener('change', async (e) => {
