@@ -791,12 +791,12 @@
         <!-- Name -->
         <div class="fg">
           <label for="iName">Item Name <span style="color:var(--red)">*</span></label>
-          <input type="text" id="iName" placeholder="e.g. Wireless Keyboard" maxlength="80" />
+          <input type="text" id="iName" placeholder="e.g. Parking Tiles 1'x1'" maxlength="80" />
         </div>
 
         <!-- SKU -->
         <div class="fg">
-          <label for="iSKU">SKU / Barcode <span style="color:var(--red)">*</span></label>
+          <label for="iSKU">Code <span style="color:var(--red)">*</span></label>
           <input type="text" id="iSKU" placeholder="e.g. WKB-001-BLK" maxlength="50" />
         </div>
 
@@ -841,7 +841,7 @@
             <tr>
               <th>Img</th>
               <th>Product</th>
-              <th>SKU / Barcode</th>
+              <th>Code</th>
               <th>Price</th>
               <th>Stock</th>
               <th>Status</th>
@@ -884,7 +884,7 @@
 
       <!-- SKU -->
       <div class="qv-sku-strip">
-        <span class="qv-sku-lbl">SKU / Barcode</span>
+        <span class="qv-sku-lbl">Code</span>
         <span class="qv-sku-val" id="qvSku">—</span>
       </div>
 
@@ -1338,7 +1338,7 @@ document.getElementById('addForm').addEventListener('submit', e => {
   const qty   = parseInt(document.getElementById('iQty').value, 10);
 
   if (!name)                     return toast('Item Name is required.', 'err');
-  if (!sku)                      return toast('SKU / Barcode is required.', 'err');
+  if (!sku)                      return toast('Code is required.', 'err');
   if (isNaN(price) || price < 0) return toast('Enter a valid price (≥ ₹0).', 'err');
   if (isNaN(qty)   || qty   < 0) return toast('Enter a valid stock quantity (≥ 0).', 'err');
   if (inventory.some(i => i.sku === sku)) return toast(`SKU "${sku}" already exists.`, 'err');
