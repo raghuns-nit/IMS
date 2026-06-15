@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SimpLx — Inventory Management</title>
 
-  <!-- Google Identity Services (for Drive OAuth) -->
   <script src="https://accounts.google.com/gsi/client" async></script>
 
   <style>
@@ -44,7 +43,7 @@
       --radius-sm:    9px;
       --radius-xs:    6px;
       --shadow:       0 4px 20px rgba(100,116,139,.13);
-      --shadow-sm: 0 2px 8px rgba(100, 116, 139, .08);
+      --shadow-sm:    0 2px 8px rgba(100, 116, 139, .08);
       --shadow-lg:    0 10px 44px rgba(100,116,139,.2);
     }
 
@@ -155,11 +154,10 @@
     /* ══ Stats Bar ═══════════════════════════════════════════ */
     .stats {
       display: grid;
-      grid-template-columns: repeat(4,1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px; margin-bottom: 22px;
     }
-    @media(max-width:900px){ .stats{ grid-template-columns: repeat(2,1fr); } }
-    @media(max-width:480px){ .stats{ grid-template-columns: 1fr; } }
+    @media(max-width:900px){ .stats{ grid-template-columns: 1fr; } }
 
     .stat-card {
       background: var(--surface);
@@ -179,7 +177,6 @@
     .sc-a::before { background: linear-gradient(90deg,#6c63ff,#8b5cf6); }
     .sc-b::before { background: linear-gradient(90deg,#16a34a,#22c55e); }
     .sc-c::before { background: linear-gradient(90deg,#dc2626,#ef4444); }
-    .sc-d::before { background: linear-gradient(90deg,#d97706,#f59e0b); }
 
     .sc-icon { font-size: 1.5rem; display: block; margin-bottom: 8px; opacity: .85; }
     
@@ -197,7 +194,15 @@
     .sc-a .sc-num { color: var(--accent); }
     .sc-b .sc-num { color: var(--green); }
     .sc-c .sc-num { color: var(--red); }
-    .sc-d .sc-num { color: var(--yellow); }
+
+    /* Threshold Input */
+    .sc-threshold-input {
+      width: 40px; text-align: center; font-size: 0.7rem; font-weight: 800;
+      border: 1px solid var(--border); border-radius: 4px; padding: 2px;
+      color: var(--text); background: var(--surface2); outline: none;
+      transition: all 0.2s;
+    }
+    .sc-threshold-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 
     /* ══ Layout ══════════════════════════════════════════════ */
     .layout {
@@ -398,7 +403,7 @@
     .prod-name { font-weight: 700; color: var(--text); }
     .prod-date { font-size: .67rem; color: var(--muted2); margin-top: 2px; }
     
-    .sku-badge {
+    .mfg-badge {
       display: inline-block;
       background: var(--surface3); border: 1px solid var(--border);
       border-radius: 5px; padding: 2px 8px;
@@ -408,22 +413,16 @@
 
     .price-val { font-weight: 800; color: var(--green); font-size: .92rem; }
 
-    /* Qty controls */
-    .qty-ctrl { display: flex; align-items: center; gap: 7px; }
-    .qty-btn {
-      width: 28px; height: 28px;
-      border-radius: 7px; border: 1.5px solid var(--border);
-      background: var(--surface); color: var(--text2);
-      font-size: 1rem; font-weight: 700; line-height: 1;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: all .15s; flex-shrink: 0;
+    /* Direct Input Qty */
+    .tbl-qty-input {
+      width: 64px !important; padding: 6px 8px !important;
+      border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: .9rem !important; font-weight: 800; font-family: inherit;
+      color: var(--text); text-align: center;
+      background: var(--surface); transition: all .2s;
     }
-    .qty-btn:active { transform: scale(.88); }
-    .qty-btn.minus:hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
-    .qty-btn.plus:hover  { background: var(--green-light); border-color: var(--green); color: var(--green); }
-    .qty-btn:disabled    { opacity: .3; cursor: not-allowed; transform: none !important; }
-    .qty-num { min-width: 32px; text-align: center; font-size: .93rem; font-weight: 800; color: var(--text); }
-    .qty-num.is-low { color: var(--red); }
+    .tbl-qty-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+    .tbl-qty-input.is-low { color: var(--red); background: #fff5f5; border-color: var(--red-border); }
 
     /* Status badges */
     .badge {
@@ -607,17 +606,17 @@
     .qv-meta span { display: flex; align-items: center; gap: 4px; }
 
     /* SKU strip */
-    .qv-sku-strip {
+    .qv-mfg-strip {
       display: flex; align-items: center; gap: 10px;
       background: var(--surface2); border: 1px solid var(--border);
       border-radius: var(--radius-sm); padding: 10px 14px;
       margin-bottom: 14px;
     }
-    .qv-sku-lbl {
+    .qv-mfg-lbl {
       font-size: .63rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: 1px; color: var(--muted); flex-shrink: 0;
     }
-    #qvSku {
+    #qvMfg {
       font-family: 'Courier New', monospace; font-size: .9rem;
       font-weight: 700; color: var(--accent); letter-spacing: .4px;
       padding: 2px 4px; margin-left: -4px;
@@ -637,13 +636,12 @@
       letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;
       display: flex; align-items: center;
     }
-    .qv-card-val {
-      font-size: 1.18rem; font-weight: 900; color: var(--text); line-height: 1;
-    }
     
     #qvPrice { font-weight: 900; color: var(--green); font-size: 1.18rem; padding: 2px; margin-left: -2px; width: 80%; }
     #qvSize  { font-weight: 900; color: var(--text); font-size: 1.18rem; padding: 2px; margin-left: -2px; width: 100%; }
-    .qv-card.c-qty   .qv-card-val.is-low { color: var(--red); }
+    #qvQtyVal { font-weight: 900; color: var(--text); font-size: 1.18rem; padding: 2px; margin-left: -2px; width: 100%; }
+    #qvQtyVal.is-low { color: var(--red); }
+    
     .qv-pfx-sym { position: absolute; left: 15px; top: 32px; font-weight: 900; color: var(--green); font-size: 1.18rem; pointer-events: none;}
     .c-price #qvPrice { padding-left: 16px; }
 
@@ -702,9 +700,6 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════
-     HEADER
-══════════════════════════════════════════════════════════ -->
 <header>
   <div class="logo-box">📦</div>
   <div class="hdr-title">
@@ -720,12 +715,8 @@
   </div>
 </header>
 
-<!-- ══════════════════════════════════════════════════════════
-     MAIN
-══════════════════════════════════════════════════════════ -->
 <div class="wrap">
 
-  <!-- Google Drive Setup Banner -->
   <div class="setup-banner" id="setupBanner" style="display:none">
     <span class="sb-icon">⚙️</span>
     <div style="flex:1">
@@ -741,7 +732,6 @@
     <button class="sb-close" onclick="this.closest('.setup-banner').style.display='none'">✕</button>
   </div>
 
-  <!-- Stats -->
   <div class="stats">
     <div class="stat-card sc-a">
       <span class="sc-icon">🏷️</span>
@@ -755,26 +745,22 @@
     </div>
     <div class="stat-card sc-c">
       <span class="sc-icon">⚠️</span>
-      <div class="sc-label">Low Stock Items</div>
+      <div class="sc-label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Low Stock Items</span>
+        <span style="font-size:0.6rem; text-transform:none; display:flex; align-items:center; gap:3px;">
+          &le; <input type="number" id="lowStockThresholdInput" class="sc-threshold-input" value="10" step="any" min="0" title="Set Low Stock Alert Threshold" />
+        </span>
+      </div>
       <div class="sc-num" id="st-low">0</div>
-    </div>
-    <div class="stat-card sc-d">
-      <span class="sc-icon">📊</span>
-      <div class="sc-label">Total Units</div>
-      <div class="sc-num" id="st-units">0</div>
     </div>
   </div>
 
   <div class="layout">
 
-    <!-- ┌─────────────────────────────────────┐
-         │       ADD PRODUCT FORM              │
-         └─────────────────────────────────────┘ -->
     <div class="panel">
       <div class="panel-head">➕ Add New Product</div>
       <form id="addForm" class="add-form" novalidate autocomplete="off">
 
-        <!-- Image -->
         <div class="fg">
           <label>Item Picture (Google Drive)</label>
           <div id="drivePanel">
@@ -785,7 +771,6 @@
               <div class="dz-sub"  id="dzSub">JPG · PNG · GIF — saved to your Google Drive</div>
             </div>
           </div>
-          <!-- Preview strip -->
           <div class="preview-strip" id="previewStrip">
             <img id="previewImg" alt="preview" />
             <div class="preview-info">
@@ -796,23 +781,20 @@
           </div>
         </div>
 
-        <!-- Name & SKU -->
         <div class="fg">
           <label for="iName">Item Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="iName" placeholder="e.g. Parking Tiles 1'x1'" maxlength="80" />
         </div>
         <div class="fg">
-          <label for="iSKU">Code <span style="color:var(--red)">*</span></label>
-          <input type="text" id="iSKU" placeholder="e.g. WKB-001-BLK" maxlength="50" />
+          <label for="iMfg">Manufacturer <span style="color:var(--red)">*</span></label>
+          <input type="text" id="iMfg" placeholder="e.g. Kajaria" maxlength="50" />
         </div>
         
-        <!-- Size -->
         <div class="fg">
           <label for="iSize">Size / Dimensions</label>
           <input type="text" id="iSize" placeholder="e.g. 1'x1' or 500ml" maxlength="50" />
         </div>
 
-        <!-- Price + Qty -->
         <div class="two-col">
           <div class="fg">
             <label for="iPrice">Price (₹) <span style="color:var(--red)">*</span></label>
@@ -823,7 +805,7 @@
           </div>
           <div class="fg">
             <label for="iQty">Stock Qty <span style="color:var(--red)">*</span></label>
-            <input type="number" id="iQty" placeholder="0" min="0" step="1" />
+            <input type="number" id="iQty" placeholder="0" min="0" step="any" />
           </div>
         </div>
 
@@ -831,30 +813,25 @@
       </form>
     </div>
 
-    <!-- ┌─────────────────────────────────────┐
-         │       INVENTORY TABLE               │
-         └─────────────────────────────────────┘ -->
     <div class="panel" style="min-height:420px">
       <div class="panel-head">📋 Inventory List</div>
 
-      <!-- Search toolbar -->
       <div class="toolbar">
         <div class="srch-wrap">
           <span class="srch-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="Search by name, SKU, or size…" />
+          <input type="text" id="searchInput" placeholder="Search by name, manufacturer, or size…" />
           <button class="srch-clear" id="searchClear" style="display:none;" title="Clear search">✕</button>
         </div>
         <span class="cnt-badge" id="cntBadge">0 items</span>
       </div>
 
-      <!-- Data table -->
       <div class="tbl-wrap">
         <table id="invTable" style="display:none">
           <thead>
             <tr>
               <th>Img</th>
               <th>Product</th>
-              <th>Code</th>
+              <th>Manufacturer</th>
               <th>Size</th>
               <th>Price</th>
               <th>Stock</th>
@@ -872,16 +849,11 @@
       </div>
     </div>
 
-  </div><!-- /layout -->
-</div><!-- /wrap -->
-
-<!-- ══ Quick View Modal ══════════════════════════════════════ -->
-<div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
+  </div></div><div class="qv-overlay" id="qvOverlay" onclick="handleQvBg(event)">
   <div class="qv-panel" id="qvPanel">
 
     <button class="qv-close" onclick="closeQV()" title="Close (Esc)">✕</button>
 
-    <!-- Hero image -->
     <div class="qv-hero" id="qvHero">
       <img id="qvImg" alt="" style="display:none" />
       <div class="qv-ph" id="qvPh">📦</div>
@@ -889,20 +861,17 @@
       <input type="file" id="qvImgInput" style="display:none" accept="image/jpeg,image/jpg,image/png,image/gif" />
     </div>
 
-    <!-- Detail body -->
     <div class="qv-body">
       <input type="text" class="qv-edit-input" id="qvName" title="Click to edit name" />
       <div class="qv-meta">
         <span>🗓 <span id="qvAdded">—</span></span>
       </div>
 
-      <!-- SKU -->
-      <div class="qv-sku-strip">
-        <span class="qv-sku-lbl">Code</span>
-        <input type="text" class="qv-edit-input" id="qvSku" title="Click to edit code" />
+      <div class="qv-mfg-strip">
+        <span class="qv-mfg-lbl">Manufacturer</span>
+        <input type="text" class="qv-edit-input" id="qvMfg" title="Click to edit manufacturer" />
       </div>
 
-      <!-- Price, Size & Qty cards -->
       <div class="qv-grid">
         <div class="qv-card c-price">
           <div class="qv-card-lbl">Unit Price</div>
@@ -915,40 +884,33 @@
         </div>
         <div class="qv-card c-qty">
           <div class="qv-card-lbl">Stock Quantity</div>
-          <div class="qv-card-val" id="qvQtyVal">—</div>
+          <input type="number" class="qv-edit-input" id="qvQtyVal" title="Click to edit qty" step="any" min="0" />
         </div>
       </div>
 
-      <!-- Total stock value -->
       <div class="qv-value-strip">
         <span class="qv-card-lbl"><span class="inr-icon qv-inr-icon">₹</span> Total Stock Value</span>
         <span class="qvv" id="qvTotalVal">—</span>
       </div>
 
-      <!-- Status -->
       <div class="qv-status-row">
         <span class="qv-status-lbl">Stock Status</span>
         <span id="qvStatus">—</span>
       </div>
       
-      <!-- Stock Timeline Log -->
       <div style="margin-top: 18px;">
         <span class="qv-status-lbl" style="display:block; margin-bottom:8px; text-transform:uppercase; font-size:0.65rem; letter-spacing:1px;">📈 Stock Movement History</span>
         <div id="qvHistoryContainer" style="max-height: 120px; overflow-y: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px;">
-          <!-- Dynamic entries -->
-        </div>
+          </div>
       </div>
       
-      <!-- Save Changes Button -->
       <button id="qvSaveBtn" class="btn-add" style="width:100%; margin-top:16px; display:none;">💾 Save Changes</button>
 
-      <!-- Hint -->
       <div class="qv-hint">Press <kbd>Esc</kbd> or click outside to close</div>
     </div>
   </div>
 </div>
 
-<!-- ══ Delete Confirm Modal ══════════════════════════════════ -->
 <div class="overlay" id="delModal">
   <div class="modal">
     <h3>🗑️ Delete Product</h3>
@@ -960,13 +922,9 @@
   </div>
 </div>
 
-<!-- ══ Toast ══════════════════════════════════════════════════ -->
 <div id="toast"><div class="tdot"></div><span id="toastMsg"></span></div>
 
 
-<!-- ══════════════════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
@@ -1002,6 +960,20 @@ let syncTimer = null;
 const blobCache = {}; // Cache for Drive image object URLs
 const IMS_FOLDER_NAME = 'IMS';
 const IMS_INVENTORY_FILE = 'inventory.json';
+
+// Global Threshold setup
+let lowStockThreshold = parseFloat(localStorage.getItem('ims_v3_threshold')) || 10;
+const thresholdInput = document.getElementById('lowStockThresholdInput');
+thresholdInput.value = lowStockThreshold;
+thresholdInput.addEventListener('change', (e) => {
+  let val = parseFloat(e.target.value);
+  if (isNaN(val) || val < 0) val = 0;
+  lowStockThreshold = val;
+  e.target.value = val;
+  localStorage.setItem('ims_v3_threshold', val);
+  render();
+  updateStats();
+});
 
 /* ─── Load persisted data ────────────────────────────────── */
 try { inventory = JSON.parse(localStorage.getItem('ims_v3') || '[]'); } catch(e) { inventory = []; }
@@ -1362,16 +1334,15 @@ document.getElementById('addForm').addEventListener('submit', e => {
   e.preventDefault();
 
   const name  = document.getElementById('iName').value.trim();
-  const sku   = document.getElementById('iSKU').value.trim().toUpperCase();
+  const mfg   = document.getElementById('iMfg').value.trim();
   const size  = document.getElementById('iSize').value.trim();
   const price = parseFloat(document.getElementById('iPrice').value);
-  const qty   = parseInt(document.getElementById('iQty').value, 10);
+  const qty   = parseFloat(document.getElementById('iQty').value);
 
   if (!name)                     return toast('Item Name is required.', 'err');
-  if (!sku)                      return toast('Code is required.', 'err');
+  if (!mfg)                      return toast('Manufacturer is required.', 'err');
   if (isNaN(price) || price < 0) return toast('Enter a valid price (≥ ₹0).', 'err');
   if (isNaN(qty)   || qty   < 0) return toast('Enter a valid stock quantity (≥ 0).', 'err');
-  if (inventory.some(i => i.sku === sku)) return toast(`SKU "${sku}" already exists.`, 'err');
 
   const nowString = new Date().toLocaleString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -1380,7 +1351,7 @@ document.getElementById('addForm').addEventListener('submit', e => {
 
   const item = {
     id:    Date.now(),
-    name, sku, size, price, qty,
+    name, mfg, size, price, qty,
     img:   currentImg || null,
     added: new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }),
     history: [{
@@ -1430,19 +1401,26 @@ searchInput.addEventListener('keydown', e => {
 });
 
 /* ═══════════════════════════════════════════════════════════
-   STOCK ADJUSTMENT + HISTORY CAPTURE
+   STOCK DIRECT EDIT (TABLE) + HISTORY CAPTURE
 ═══════════════════════════════════════════════════════════ */
-function adjQty(id, d) {
+function directQtyUpdate(id, val) {
   const item = inventory.find(i => i.id === id);
   if (!item) return;
-  const next = item.qty + d;
-  if (next < 0) return toast('Quantity cannot go below 0.', 'err');
+  
+  let next = parseFloat(val);
+  if (isNaN(next) || next < 0) {
+    toast('Invalid quantity. Must be ≥ 0.', 'err');
+    render(); // reset table input
+    return;
+  }
+
+  let d = next - item.qty;
+  if (d === 0) return;
 
   let comment = '';
   if (d < 0) {
-    // Stock reduction requires a mandatory/optional comment capture
     const reason = prompt(`Reason for reducing stock of "${item.name}":`, "Stock dispatched / Sold");
-    if (reason === null) return; // Abort structural mutation if user clicks cancel
+    if (reason === null) { render(); return; } // Abort edit entirely
     comment = reason.trim() || "Stock adjustment reduction";
   } else {
     comment = "Stock replenishment addition";
@@ -1450,23 +1428,18 @@ function adjQty(id, d) {
 
   item.qty = next;
 
-  // Track event history logs
   if (!item.history) item.history = [];
   const timestamp = new Date().toLocaleString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
   });
 
-  item.history.unshift({
-    timestamp,
-    change: d,
-    newQty: next,
-    comment
-  });
+  item.history.unshift({ timestamp, change: d, newQty: next, comment });
 
   persist(); render(); updateStats();
-  if (next === 0)     toast(`🚫 "${item.name}" is out of stock!`, 'warn');
-  else if (next < 10) toast(`⚠️ "${item.name}" — only ${next} left!`, 'warn');
+
+  if (next === 0) toast(`🚫 "${item.name}" is out of stock!`, 'warn');
+  else if (next <= lowStockThreshold) toast(`⚠️ "${item.name}" is low on stock!`, 'warn');
   
   if(currentQvId === id) {
     updateQvTotal(item);
@@ -1520,12 +1493,12 @@ function openQV(id) {
 
   /* ── editable text fields ── */
   document.getElementById('qvName').value     = item.name;
-  document.getElementById('qvSku').value      = item.sku;
+  document.getElementById('qvMfg').value      = item.mfg || '';
   document.getElementById('qvSize').value     = item.size || '';
   document.getElementById('qvPrice').value    = item.price;
+  document.getElementById('qvQtyVal').value   = item.qty;
   document.getElementById('qvAdded').textContent = item.added;
   
-  // Hide Save button initially
   document.getElementById('qvSaveBtn').style.display = 'none';
   
   updateQvTotal(item);
@@ -1537,16 +1510,16 @@ function openQV(id) {
 }
 
 function updateQvTotal(item) {
-  const low = item.qty < 10;
   const livePrice = parseFloat(document.getElementById('qvPrice').value) || 0;
+  const liveQty = parseFloat(document.getElementById('qvQtyVal').value) || 0;
+  const low = liveQty <= lowStockThreshold;
   
-  document.getElementById('qvTotalVal').textContent = '₹' + fmt(livePrice * item.qty);
+  document.getElementById('qvTotalVal').textContent = '₹' + fmt(livePrice * liveQty);
 
   const qtyEl = document.getElementById('qvQtyVal');
-  qtyEl.textContent = item.qty;
-  qtyEl.className   = 'qv-card-val' + (low ? ' is-low' : '');
+  if(low) qtyEl.classList.add('is-low'); else qtyEl.classList.remove('is-low');
 
-  document.getElementById('qvStatus').innerHTML = item.qty === 0
+  document.getElementById('qvStatus').innerHTML = liveQty === 0
     ? `<span class="badge b-out">🚫 Out of Stock</span>`
     : low
       ? `<span class="badge b-low">⚠️ Low Stock</span>`
@@ -1579,24 +1552,49 @@ function renderQvHistory(item) {
 }
 
 // Show the "Save" button whenever a field is edited
-['qvName', 'qvSku', 'qvSize', 'qvPrice'].forEach(id => {
+['qvName', 'qvMfg', 'qvSize', 'qvPrice', 'qvQtyVal'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {
     document.getElementById('qvSaveBtn').style.display = 'flex';
-    
-    if (id === 'qvPrice' && currentQvId) {
+    if (currentQvId) {
       const item = inventory.find(i => i.id === currentQvId);
       if (item) updateQvTotal(item);
     }
   });
 });
 
-// Explicit save action
+// Explicit save action inside Quick View
 document.getElementById('qvSaveBtn').addEventListener('click', () => {
   const item = inventory.find(i => i.id === currentQvId);
   if (!item) return;
 
+  const newQty = parseFloat(document.getElementById('qvQtyVal').value);
+  if (isNaN(newQty) || newQty < 0) {
+    return toast('Invalid quantity. Must be ≥ 0.', 'err');
+  }
+
+  // Handle Qty history if changed in quick view
+  let d = newQty - item.qty;
+  if (d !== 0) {
+    let comment = '';
+    if (d < 0) {
+      const reason = prompt(`Reason for reducing stock of "${item.name}":`, "Stock dispatched / Sold");
+      if (reason === null) return; // Abort saving entirely
+      comment = reason.trim() || "Stock adjustment reduction";
+    } else {
+      comment = "Stock replenishment addition";
+    }
+    
+    if (!item.history) item.history = [];
+    const timestamp = new Date().toLocaleString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    });
+    item.history.unshift({ timestamp, change: d, newQty: newQty, comment });
+    item.qty = newQty;
+  }
+
   item.name  = document.getElementById('qvName').value.trim();
-  item.sku   = document.getElementById('qvSku').value.trim().toUpperCase();
+  item.mfg   = document.getElementById('qvMfg').value.trim();
   item.size  = document.getElementById('qvSize').value.trim();
   item.price = parseFloat(document.getElementById('qvPrice').value) || 0;
 
@@ -1606,6 +1604,9 @@ document.getElementById('qvSaveBtn').addEventListener('click', () => {
   
   document.getElementById('qvSaveBtn').style.display = 'none';
   toast('Changes saved successfully!', 'ok');
+  
+  // Re-render history timeline
+  renderQvHistory(item);
 });
 
 // Quick View Image Replacement
@@ -1656,7 +1657,7 @@ function render() {
   const q    = searchQ;
   const list = inventory.filter(i =>
     i.name.toLowerCase().includes(q) || 
-    i.sku.toLowerCase().includes(q) ||
+    (i.mfg && i.mfg.toLowerCase().includes(q)) ||
     (i.size && i.size.toLowerCase().includes(q))
   );
 
@@ -1678,7 +1679,7 @@ function render() {
   emp.style.display = 'none'; tbl.style.display = '';
 
   document.getElementById('tBody').innerHTML = list.map(item => {
-    const low = item.qty < 10;
+    const low = item.qty <= lowStockThreshold;
     
     const thumb = `<div class="thumb">
        <img id="tImg-${item.id}" alt="${esc(item.name)}" style="display:none;" />
@@ -1692,16 +1693,11 @@ function render() {
           <div class="prod-name">${esc(item.name)}</div>
           <div class="prod-date">Added ${esc(item.added)}</div>
         </td>
-        <td><span class="sku-badge">${esc(item.sku)}</span></td>
+        <td><span class="mfg-badge">${esc(item.mfg || '—')}</span></td>
         <td>${esc(item.size || '—')}</td>
         <td class="price-val">₹${fmt(item.price)}</td>
         <td onclick="event.stopPropagation()">
-          <div class="qty-ctrl">
-            <button class="qty-btn minus" onclick="adjQty(${item.id},-1)"
-                    ${item.qty === 0 ? 'disabled' : ''} title="Decrease">−</button>
-            <span class="qty-num ${low ? 'is-low' : ''}">${item.qty}</span>
-            <button class="qty-btn plus" onclick="adjQty(${item.id},1)" title="Increase">+</button>
-          </div>
+           <input type="number" class="tbl-qty-input ${low ? 'is-low' : ''}" value="${item.qty}" step="any" min="0" onchange="directQtyUpdate(${item.id}, this.value)" onclick="event.stopPropagation()" />
         </td>
         <td onclick="event.stopPropagation()">
           <button class="btn-del" onclick="reqDel(${item.id})">🗑 Delete</button>
@@ -1722,12 +1718,11 @@ function render() {
 function updateStats() {
   const total = inventory.length;
   const value = inventory.reduce((s, i) => s + i.price * i.qty, 0);
-  const low   = inventory.filter(i => i.qty < 10).length;
-  const units = inventory.reduce((s, i) => s + i.qty, 0);
+  const low   = inventory.filter(i => i.qty <= lowStockThreshold).length;
+  
   document.getElementById('st-total').textContent = total;
   document.getElementById('st-value').textContent = '₹' + fmt(value);
   document.getElementById('st-low').textContent   = low;
-  document.getElementById('st-units').textContent = units.toLocaleString('en-IN');
 }
 
 /* ═══════════════════════════════════════════════════════════
